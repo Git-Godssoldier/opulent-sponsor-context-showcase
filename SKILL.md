@@ -159,7 +159,7 @@ Decision layer first, audit layer beneath it. `proposed`, `blocked`, and `failed
 
 ## Report
 
-Capabilities run, capabilities skipped with reasons, credits planned against spent, unknowns, the open commercial gates, and the review scorecard — the meeting note's own dimensions (target quality, decision-maker coverage, warm paths, message quality, time saved, pipeline), filled where measurable and blocked-with-reason where not.
+Capabilities run, capabilities skipped with reasons, credits planned against spent, unknowns, and the open gates — the missing inputs that block a step, each naming what would resolve it.
 
 ## References
 

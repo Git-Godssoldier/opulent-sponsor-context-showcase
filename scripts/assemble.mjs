@@ -262,29 +262,24 @@ Object.assign(packet, {
     identity_resolution_pct: brand ? 100 : 0,
     quarantined: cohort.rejected ?? 0,
   },
+  // Missing inputs that block a step of this workflow, and nothing else. Each names
+  // what would resolve it and which step it unblocks. Commercial terms between the
+  // operator and the client belong in the engagement's own records, not in a run
+  // artifact — they change nothing about how a sponsor gets sourced.
   open_gates: [
-    { gate: "paying_buyer", state: "unresolved", note: "Who pays Opulent was never established." },
-    { gate: "budget", state: "unresolved", note: "No project budget or proposed price." },
-    { gate: "approval_path", state: "unresolved", note: "No approval or signing path named." },
-    { gate: "sponsor_exclusions", state: "unresolved", note: "Category rules and the three sponsors already in motion were never supplied. Every target is unverified against this rule." },
-    { gate: "sponsorship_inventory", state: "unresolved", note: "No inventory, so a draft cannot name what a sponsor receives." },
-    { gate: "attendance_figure", state: "disputed", note: festival.attendance.reason },
-    { gate: "sender_account", state: "unresolved", note: agencySender.authority_reason },
-    { gate: "acceptance_criteria", state: "unresolved", note: "No agreed measure of a successful demonstration." },
-    { gate: "pilot_price_scope", state: "unresolved", note: "The price and scope of a paid pilot were never proposed or agreed." },
-    { gate: "data_sources_permissions", state: "unresolved", note: "The exact data sources and access rules were never established. Warm-path mapping needs the client's inbox and network, and stays out of scope until this gate resolves." },
-    { gate: "materials_handoff_date", state: "unresolved", note: "Bob's complete materials handoff has no due date. The meeting note called this the main weakness." },
+    { gate: "sponsor_exclusions", state: "unresolved", blocks: "step 1 clearance",
+      note: "Category rules and the sponsors already in motion were never supplied. Every target stays unverified against this rule." },
+    { gate: "sponsorship_inventory", state: "unresolved", blocks: "naming an available tier",
+      note: "The rate card is published, but which tiers remain open is unknown, so a draft names a tier without implying availability." },
+    { gate: "attendance_figure", state: "disputed", blocks: "any attendance claim",
+      note: festival.attendance.reason },
+    { gate: "sender_account", state: "unresolved", blocks: "sending",
+      note: agencySender.authority_reason },
+    { gate: "decision_maker_urls", state: "unresolved", blocks: "a named greeting",
+      note: "No exact LinkedIn profile URLs supplied, so drafts open to the company's sponsorship team. The skill never resolves a name by search." },
+    { gate: "data_access", state: "unresolved", blocks: "warm-path mapping",
+      note: "No inbox or network access is configured, so relationship paths stay out of scope. Public evidence only until it is." },
   ],
-  // The meeting note's own review dimensions for the bounded demonstration. The run
-  // fills what it can measure; the rest stays pending with the gate that blocks it.
-  review_scorecard: {
-    target_quality: { value: null, state: "pending_review", note: "Fit bands across the cohort, once more than one target has run." },
-    decision_maker_coverage: { value: person ? "1/1 retrieved" : "0/1 retrieved", state: "measured", note: "Retrieved decision makers over targets run. Rises only with client-supplied profile URLs." },
-    warm_paths: { value: null, state: "blocked", note: "Requires the client's inbox and network access — see the data_sources_permissions gate." },
-    message_quality: { value: null, state: "pending_review", note: "lint_pitch verdict plus the client's read of the draft." },
-    time_saved: { value: null, state: "pending_review", note: "Against the client's stated baseline: ChatGPT ideas, then manual LinkedIn research per company." },
-    pipeline_estimate: { value: null, state: "pending_review", note: "Client's judgement after reviewing drafts; never inferred from fit bands alone." },
-  },
   unknowns: Object.entries(R).filter(([, v]) => v.state === "unknown").map(([k, v]) => `${k}: ${v.reason ?? "not retrieved"}`),
 });
 

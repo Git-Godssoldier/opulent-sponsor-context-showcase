@@ -14,7 +14,7 @@ An original implementation informed by the public Opulent GTM Intelligence repor
 2. **Scope strip** — rows in, draftable past both gates, calls ledgered, open gates unresolved.
 3. **Sponsor card** — company, category, domain, exclusion state, fit band with its counter-evidence, then all ten required fields, each rendered as its own state. An `unknown` field shows its reason, so "we looked and found nothing" stays distinguishable from "we never looked."
 4. **Refused rows** — every rejected target with its reason. This section is the credibility of the rest.
-5. **Open gates** — the unresolved commercial questions, each with what would resolve it.
+5. **Open gates** — the missing inputs that block a step, each with what would resolve it and which step it unblocks.
 6. **Withheld** — the disputed attendance figure, both client claims side by side with their dates.
 
 **Audit layer**, beneath: the operation ledger — capability, endpoint, status, receipt presence per call — and the truth strip restating the executed-requires-receipt rule.
