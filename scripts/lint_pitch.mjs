@@ -39,8 +39,10 @@ const preview = props.props?.previewText ?? "";
 const prose = [text, subject, preview].join("\n").toLowerCase();
 
 // ---- banned phrases ---------------------------------------------------------
-const lists = JSON.parse(readFileSync(resolve(here, "../knowledge/voice/banned-phrases.json"), "utf8"));
-for (const phrase of [...lists.house, ...lists.deck_register]) {
+const { campaignDir, agencyDir } = await import("./lib/campaign.mjs");
+const house = JSON.parse(readFileSync(resolve(agencyDir(), "banned-phrases.json"), "utf8"));
+const deck = JSON.parse(readFileSync(resolve(campaignDir().dir, "banned-phrases.json"), "utf8"));
+for (const phrase of [...house.house, ...(deck.deck_register ?? [])]) {
   if (prose.includes(phrase.toLowerCase())) fail("banned-phrase", `"${phrase}"`);
 }
 
@@ -62,7 +64,7 @@ if (asks !== 1) fail("single-ask", `"Book fifteen minutes" appears ${asks} times
 // ---- tier fidelity ----------------------------------------------------------
 // Any dollar figure in the pitch must come from the packet: a rate-card range or the
 // audience's household-income band. Everything else is an invented number.
-const festival = JSON.parse(readFileSync(resolve(here, "../fixtures/festival-packet.json"), "utf8"));
+const festival = JSON.parse(readFileSync(resolve(campaignDir().dir, "festival-packet.json"), "utf8"));
 const tiers = festival.packages?.rate_card ?? [];
 const income = String(festival.audience?.household_income ?? "");
 const allowed = [...tiers.map((t) => String(t.range)), income]

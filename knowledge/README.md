@@ -1,25 +1,15 @@
 # Knowledge base
 
-The client's own materials, carried with the skill so every run authors from the same ground truth. Nothing here is verified by us; it is what the client supplied, preserved bit-for-bit, with the claims extracted and cited so prose never has to reach back into a 10MB deck.
+Two kinds of knowledge live in this repository, and the split is the identity of the skill.
 
-## Sources
+**`knowledge/agency/` is Trifecta Marketing** — the client. Bob Dittrich's profile and register (`trifecta-profile.md`), the sending identity (`sender.json`), and the agency-wide banned phrases. This persists across every engagement: Trifecta sells sponsorship packages for ten to fifteen independent festivals, and the skill is their tool.
 
-| File | SHA-256 | Provenance |
-| --- | --- | --- |
-| `sources/nocturnal-valley-deck-draft-1.pdf` | `ab2b30df…d87160d` | 15 pages, image-based text, PDF author metadata "Joseph Abegg". Bob's August 10 email. |
-| `sources/nocturnal-valley-deck-draft-2.pptx` | `f21eb69d…f49ddcb7` | 9 slides, the later and shorter revision. Bob's August 11 resend. |
-
-Checksums match the collection manifest of 2026-08-12. The August 7 calendar invite was collected with these but stays out of the knowledge base: it is scheduling metadata, and nothing in a pitch may imply a meeting history.
-
-## What lives where
-
-- **`deck-facts.md`** — every claim the decks make, each with its slide citation. The only place outreach prose may take a festival fact from, besides the run's own dossier.
-- **`voice/voice-profile.md`** — the two registers (the sender's and the deck's), which one the email is written in, and the adaptation rules between them.
-- **`voice/banned-phrases.json`** — the machine-checkable half of the voice. `scripts/lint_pitch.mjs` enforces it after every render; `npm run email` will not pass a pitch that violates it.
+**`campaigns/<key>/` is one property being sold** — currently `nocturnal-valley`, the sample campaign. The property's decks bit-for-bit in `sources/` (checksums in the campaign's own files), the extracted claims (`deck-facts.md`), the campaign facts (`festival-packet.json`), the target list and exclusion rules, the discovery universe (`comparable-events.json`), and that deck's register bans. A new engagement is a new campaign directory and the same eight commands; the checklist is at the end of `agency/trifecta-profile.md`.
 
 ## The contract
 
-1. A festival fact in outreach traces to `deck-facts.md` or to a dossier field. A fact in neither is not written.
-2. Zone and tier names are the deck's, verbatim: Astral, Nocturnal, Forest, VIP Experience, Sampling Activations, Presenting Sponsor, Stage Sponsor, VIP Sponsor, Content Partner, Sampling Partner.
-3. The deck's promotional register stays in the deck. The email is written in the sender's register — the profile says exactly where the line is.
-4. When the client revises a deck, the new file lands in `sources/`, `deck-facts.md` is re-cited against it, and the diff between the two is itself a finding.
+1. A property fact in outreach traces to the campaign's `deck-facts.md` or to a dossier field. A fact in neither is not written.
+2. Zone and tier names are the campaign deck's, verbatim.
+3. The deck's promotional register stays in the deck; the email is written in the sender's register from `agency/trifecta-profile.md`. `scripts/lint_pitch.mjs` enforces both banned lists after every render.
+4. When the client revises a deck, the new file lands in the campaign's `sources/`, `deck-facts.md` is re-cited against it, and the diff between the two is itself a finding.
+5. Nothing here is verified by us: agency and campaign files alike are client-supplied, preserved as received, and carry the same evidence envelope as everything else.

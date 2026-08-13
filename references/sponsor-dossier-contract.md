@@ -33,7 +33,7 @@ Every field in `required_fields` carries the same six keys:
 | `decision_maker` | `/people/retrieve` | The client supplies an exact profile URL |
 | `decision_maker_title` | `/people/retrieve` | Depends on `decision_maker` |
 | `contact_route` | A verification provider | Never, in showcase mode. Stays `null` |
-| `compliance_flags` | `targets/exclusions.csv` | Always; empty is a real answer |
+| `compliance_flags` | the campaign's `exclusions.csv` | Always; empty is a real answer |
 | `changes_since_last` | A prior accepted run | Second run onward |
 
 All ten appear whatever the outcome. A field missing from the packet is worse than one present and `unknown`: the reader cannot tell "we looked and found nothing" from "we never looked."

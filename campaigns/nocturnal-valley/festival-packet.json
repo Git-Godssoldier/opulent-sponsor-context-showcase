@@ -149,14 +149,6 @@
     "source": "client_email",
     "state": "supplied"
   },
-  "sender": {
-    "name": "Robert Dittrich",
-    "preferred_name": "Bob",
-    "company": "Trifecta Marketing",
-    "calendly": "https://calendly.com/robertdittrich48/30min",
-    "authority_state": "unconfirmed",
-    "authority_reason": "The sending account and outreach permissions were never established. Every draft stays a draft until they are."
-  },
   "source_materials": [
     "knowledge/sources/nocturnal-valley-deck-draft-1.pdf (15 pages)",
     "knowledge/sources/nocturnal-valley-deck-draft-2.pptx (9 slides)",

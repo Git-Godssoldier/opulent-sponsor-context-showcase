@@ -6,10 +6,10 @@ dashboard/.next/
 *.tsbuildinfo
 .DS_Store
 
-# The client's own list and the exclusion rules ship, because they are the demo's input
-# and they contain no personal data — company names, categories, and public domains.
-# A list that carries named contacts does not belong here.
-targets/*-private.csv
+# Campaign lists and exclusion rules ship, because they are the demo's input and carry
+# no personal data — company names, categories, public domains. A list with named
+# contacts does not belong in git.
+campaigns/*/*-private.csv
 
 # Run output
 /artifacts/

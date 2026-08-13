@@ -8,7 +8,8 @@ import test from "node:test";
 
 const dossierTemplate = JSON.parse(await readFile(resolve("templates/sponsor-dossier.template.json"), "utf8"));
 const packetTemplate = JSON.parse(await readFile(resolve("templates/packet.template.json"), "utf8"));
-const festival = JSON.parse(await readFile(resolve("fixtures/festival-packet.json"), "utf8"));
+const festival = JSON.parse(await readFile(resolve("campaigns/nocturnal-valley/festival-packet.json"), "utf8"));
+const agencySender = JSON.parse(await readFile(resolve("knowledge/agency/sender.json"), "utf8"));
 
 const REQUIRED_FIELDS = [
   "category_fit", "activation_history", "audience_overlap", "regional_presence",
@@ -74,7 +75,7 @@ test("the rate card is supplied with slide citations; availability is not", () =
 test("brand tokens come from the deck's own slide evidence", () => {
   const dir = mkdtempSync(join(tmpdir(), "brand-"));
   run(resolve("scripts/extract_brand.mjs"),
-    ["--deck", resolve("knowledge/sources/nocturnal-valley-deck-draft-2.pptx")], { cwd: dir });
+    ["--deck", resolve("campaigns/nocturnal-valley/sources/nocturnal-valley-deck-draft-2.pptx")], { cwd: dir });
   const tokens = JSON.parse(readFileSync(join(dir, "artifacts/brand-tokens.json"), "utf8"));
   assert.equal(tokens.palette.accent, "#5B2D8E");   // the deck's dominant saturated color
   assert.equal(tokens.palette.accent2, "#C15A27");  // next saturated color at a distinct hue
@@ -147,8 +148,10 @@ test("a dollar figure outside the rate card is caught", () => {
   assert.match(r.out, /tier-fidelity/);
 });
 
-test("sender authority is unconfirmed", () => {
-  assert.equal(festival.sender.authority_state, "unconfirmed");
+test("sender authority is unconfirmed, and the sender is the agency's", () => {
+  assert.equal(agencySender.authority_state, "unconfirmed");
+  assert.equal(agencySender.company, "Trifecta Marketing");
+  assert.ok(!("sender" in festival), "the campaign packet carries the property, never the sender");
 });
 
 /* ---------------- the target loader ---------------- */

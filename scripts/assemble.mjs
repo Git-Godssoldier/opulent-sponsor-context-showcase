@@ -32,7 +32,10 @@ const summary = await maybe("artifacts/calls-summary.json");
 if (!summary) { console.error("artifacts/calls-summary.json not found. Run npm run calls first."); process.exit(2); }
 const signal = (await maybe("artifacts/signal.json")) ?? {};
 const cohort = (await maybe("artifacts/cohort.json")) ?? {};
-const festival = await read("fixtures/festival-packet.json");
+const { campaignDir, sender } = await import("./lib/campaign.mjs");
+const campaign = campaignDir();
+const festival = await read(`${campaign.dir}/festival-packet.json`);
+const agencySender = sender();
 
 const receipts = {};
 if (existsSync(resolve("artifacts/receipts"))) {
@@ -176,7 +179,8 @@ dossier.conflict_check = {
 const packet = await read("templates/packet.template.json");
 Object.assign(packet, {
   stage: "assembled",
-  client: "Trifecta Marketing — Nocturnal Valley",
+  client: "Trifecta Marketing",
+  campaign: { key: campaign.key, event: festival.event_name, promoter: festival.promoter?.name ?? null },
   objective: "Source festival sponsors. One target taken to the limit of public evidence.",
   generated_at: now,
   source_mode: summary.status === "complete" ? "contextdev_live" : summary.status,
@@ -246,7 +250,7 @@ Object.assign(packet, {
     { gate: "sponsor_exclusions", state: "unresolved", note: "Category rules and the three sponsors already in motion were never supplied. Every target is unverified against this rule." },
     { gate: "sponsorship_inventory", state: "unresolved", note: "No inventory, so a draft cannot name what a sponsor receives." },
     { gate: "attendance_figure", state: "disputed", note: festival.attendance.reason },
-    { gate: "sender_account", state: "unresolved", note: festival.sender.authority_reason },
+    { gate: "sender_account", state: "unresolved", note: agencySender.authority_reason },
     { gate: "acceptance_criteria", state: "unresolved", note: "No agreed measure of a successful demonstration." },
     { gate: "pilot_price_scope", state: "unresolved", note: "The price and scope of a paid pilot were never proposed or agreed." },
     { gate: "data_sources_permissions", state: "unresolved", note: "The exact data sources and access rules were never established. Warm-path mapping needs the client's inbox and network, and stays out of scope until this gate resolves." },

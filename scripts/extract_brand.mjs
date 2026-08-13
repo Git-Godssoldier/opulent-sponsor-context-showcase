@@ -23,6 +23,8 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 
 import { resolve, basename } from "node:path";
 import { inflateRawSync } from "node:zlib";
 
+import { campaignDir } from "./lib/campaign.mjs";
+
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i === -1 ? d : process.argv[i + 1]; };
 
 // ---- minimal zip ------------------------------------------------------------
@@ -147,7 +149,7 @@ const deckArg = arg("deck", null);
 const domain = arg("domain", null);
 let deckPath = deckArg;
 if (!deckPath) {
-  const dir = resolve("knowledge/sources");
+  const dir = resolve(campaignDir().dir, "sources");
   const candidates = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".pptx")) : [];
   if (candidates.length === 1) deckPath = resolve(dir, candidates[0]);
   else if (candidates.length > 1) {
@@ -158,7 +160,7 @@ if (!deckPath) {
 }
 if (!deckPath || !existsSync(resolve(deckPath))) {
   console.error("usage: node scripts/extract_brand.mjs [--deck <file>.pptx] [--domain <event-domain>]");
-  console.error("No deck found. The campaign's deck lives in knowledge/sources/.");
+  console.error(`No deck found. The campaign's deck lives in ${campaignDir().dir}/sources/.`);
   process.exit(2);
 }
 

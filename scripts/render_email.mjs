@@ -31,7 +31,9 @@ const arg = (name, dflt) => {
 const read = async (p) => JSON.parse(await readFile(resolve(p), "utf8"));
 
 const dossier = await read(arg("dossier", "artifacts/dossier.json"));
-const festival = await read(arg("festival", "fixtures/festival-packet.json"));
+const { campaignDir, sender } = await import("./lib/campaign.mjs");
+const festival = await read(arg("festival", `${campaignDir().dir}/festival-packet.json`));
+const agencySender = sender();
 
 // Campaign brand tokens: extracted once per campaign from the client's own deck.
 // Missing tokens are generated on the spot so the first render is already branded;
@@ -115,9 +117,9 @@ const props = {
   offerSheet: rateCard,
   highlightTier,
   heroImageUrl: dossier.outreach?.hero_image_url ?? undefined,
-  callUrl: festival.sender?.calendly ?? null,
-  senderName: festival.sender?.name ?? null,
-  senderCompany: festival.sender?.company ?? null,
+  callUrl: agencySender.calendly ?? null,
+  senderName: agencySender.name ?? null,
+  senderCompany: agencySender.company ?? null,
   optOutUrl: dossier.outreach?.opt_out_url ?? "",
   previewText: dossier.outreach?.preview_text ?? null,
   brand,
@@ -158,7 +160,7 @@ await writeFile(resolve("artifacts/pitch.props.json"),
                    subject: dossier.outreach?.subject ?? null,
                    review_state: "hold",
                    send_state: "draft_only_not_sent",
-                   sender_authority: festival.sender?.authority_state ?? "unconfirmed",
+                   sender_authority: agencySender.authority_state ?? "unconfirmed",
                    attendance_omitted: festival.attendance?.state === "disputed" }, null, 2) + "\n");
 
 // The draft is part of the run's record: write the paths into the dossier and derive

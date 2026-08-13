@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "targets": "node scripts/load_targets.mjs targets/nocturnal-valley-targets.csv --exclusions targets/exclusions.csv --out artifacts/cohort.json",
+    "targets": "node scripts/load_targets.mjs --out artifacts/cohort.json",
     "calls": "node scripts/run_calls.mjs",
     "signal": "node scripts/scrape_signal.mjs",
     "assemble": "node scripts/assemble.mjs",

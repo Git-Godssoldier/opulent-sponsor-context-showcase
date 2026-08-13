@@ -35,15 +35,18 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { existsSync } from "node:fs";
 import { dirname } from "node:path";
 
-const [file, ...rest] = process.argv.slice(2);
+import { campaignDir } from "./lib/campaign.mjs";
+
+const campaign = campaignDir();
+const rest = process.argv.slice(2);
+// The positional file is any token that is not a flag and not a flag's value.
+const VALUED = new Set(["--exclusions", "--out", "--campaign"]);
+const fileArg = rest.find((a, i, all) => !a.startsWith("--") && !VALUED.has(all[i - 1]));
+const file = fileArg ?? `${campaign.dir}/targets.csv`;
 const flag = (n, d) => { const i = rest.indexOf(`--${n}`); return i === -1 ? d : rest[i + 1]; };
 const outPath = flag("out", null);
-const exclPath = flag("exclusions", "targets/exclusions.csv");
+const exclPath = flag("exclusions", `${campaign.dir}/exclusions.csv`);
 
-if (!file) {
-  console.error("usage: node scripts/load_targets.mjs <targets.csv> [--exclusions <file>] [--out <path>]");
-  process.exit(2);
-}
 
 /** Bare domain: no scheme, no www, no path. One dot minimum. */
 const BARE_DOMAIN = /^(?!www\.)(?!https?:)[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;

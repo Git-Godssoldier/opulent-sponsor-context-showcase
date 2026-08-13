@@ -32,7 +32,8 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const universe = JSON.parse(readFileSync(resolve(here, "../fixtures/comparable-events.json"), "utf8"));
+import { campaignDir } from "./lib/campaign.mjs";
+const universe = JSON.parse(readFileSync(resolve(campaignDir().dir, "comparable-events.json"), "utf8"));
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(`--${f}`);
 const val = (f) => { const i = argv.indexOf(`--${f}`); return i === -1 ? null : argv[i + 1]; };

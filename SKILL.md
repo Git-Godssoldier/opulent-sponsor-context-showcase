@@ -6,6 +6,8 @@ license: MIT
 
 # Opulent Sponsor Context Showcase
 
+The skill is **Trifecta Marketing's** — Bob Dittrich's agency, selling sponsorship packages for ten to fifteen independent festivals. A campaign is one property being sold, held as data under `campaigns/<key>/`; Nocturnal Valley is the sample campaign, not the identity. One campaign present runs by default; several need `--campaign <key>`.
+
 Eight commands, in order.
 
 ```bash
@@ -23,7 +25,7 @@ npm run dashboard && npm run dashboard:serve               # 8
 
 ## Invariants
 
-- `templates/`, `fixtures/`, and `knowledge/` are read-only. Output goes to `artifacts/`.
+- `templates/`, `knowledge/`, and `campaigns/` are read-only during a run. Output goes to `artifacts/`.
 - `executed` requires an HTTP response **and** a stored receipt. Otherwise `blocked_missing_credentials`, `blocked_endpoint_access`, or `failed`.
 - Absence is `unknown`. Only dated evidence sets `false`.
 - Read `artifacts/calls-summary.json`, not the receipts.
@@ -31,12 +33,12 @@ npm run dashboard && npm run dashboard:serve               # 8
 - **No attendance figure appears in any draft.** The client's two figures do not reconcile, and neither deck states one.
 - **A blocked target never reaches a draft**, whichever gate blocked it.
 - **A greeting name comes only from a retrieved profile.** Without one the draft opens to the company's sponsorship team. A name is never invented, borrowed, or guessed.
-- Outreach prose starts from `knowledge/`: read `knowledge/voice/voice-profile.md` and `knowledge/deck-facts.md` before writing any reason, subject, preview, or body. A festival fact outside `deck-facts.md` or the dossier is not written.
+- Outreach prose starts from the knowledge base: read `knowledge/agency/trifecta-profile.md` (the sender's register) and the campaign's `deck-facts.md` before writing any reason, subject, preview, or body. A property fact outside the campaign's `deck-facts.md` or the dossier is not written.
 - The pitch is a draft. Sender authority is unconfirmed.
 
 ## 1 · Targets
 
-Loads `targets/nocturnal-valley-targets.csv` — the client's original 25 plus the researched spirits rows — and applies three gates.
+Loads the campaign's `targets.csv` — for Nocturnal Valley, the promoter's original 25 plus the researched spirits rows — and applies three gates.
 
 Compliance first: cannabis rows are admitted for research and marked undraftable, per the client's own email. Client-decision holds second: a row the client must resolve before any pitch (NUTRL, held until the Anheuser-Busch entry point is picked) is admitted and marked the same way. Identity last: a row without an exact bare domain is rejected, never resolved by search. Two rows ship as rejected on purpose — Volcán X.A and Cîroc are leads awaiting a client-confirmed domain, and their notes say so.
 
@@ -52,7 +54,7 @@ Pick one accepted, `draft_gate: open` row.
 
 The client's list came from a category brainstorm, which produces names with no evidence. Discovery inverts that: harvest the sponsor lists of comparable events, where every company arrives having already bought what this festival sells, with a dated, quotable activation attached by construction.
 
-The universe lives in `fixtures/comparable-events.json`, tiered by the deck's own ICP — same format and region first (Electric Forest, North Coast, ARC, Summer Camp), then the same market (Evolution's 2026 pause left every 2025 St. Louis sponsor with a freed budget; Music at the Intersection), then national EDM properties dated inside 2026 (EDC in May, Coachella's spirits row in April, Ultra, Lollapalooza), and above all of them any prior event at Astral Valley Art Park itself.
+The universe lives in the campaign's `comparable-events.json`, tiered by the deck's own ICP — same format and region first (Electric Forest, North Coast, ARC, Summer Camp), then the same market (Evolution's 2026 pause left every 2025 St. Louis sponsor with a freed budget; Music at the Intersection), then national EDM properties dated inside 2026 (EDC in May, Coachella's spirits row in April, Ultra, Lollapalooza), and above all of them any prior event at Astral Valley Art Park itself.
 
 ```bash
 npm run discover -- --list                  # the universe, by tier
@@ -97,7 +99,7 @@ Undated is not a signal. A sponsorship with no date cannot tell you whether the 
 
 ## 4 · Brand
 
-Extracts the campaign's visual identity into `artifacts/brand-tokens.json`: palette and type from the client's own deck in `knowledge/sources/`, ranked from slide-XML evidence counts that travel with the tokens. With a key, `-- --domain <event-domain>` merges the event site's styleguide; the deck stays primary.
+Extracts the campaign's visual identity into `artifacts/brand-tokens.json`: palette and type from the deck in the campaign's `sources/`, ranked from slide-XML evidence counts that travel with the tokens. With a key, `-- --domain <event-domain>` merges the event site's styleguide; the deck stays primary.
 
 The template is the sender's stationery and carries no event brand of its own. A new campaign is a new deck plus a re-run of this step, never a template edit.
 
@@ -111,7 +113,7 @@ Every field: `value`, `state`, `confidence`, `source`, `source_url`, `observed_a
 
 **Re-running assemble is safe**: the authored `fit` and `outreach` blocks in an existing dossier survive, and the packet is re-derived from the merged result. `--fresh` discards them deliberately.
 
-Then write the judgement into `artifacts/dossier.json` — read `knowledge/voice/voice-profile.md` and `knowledge/deck-facts.md` first — and re-run assemble so the packet carries it:
+Then write the judgement into `artifacts/dossier.json` — read `knowledge/agency/trifecta-profile.md` and the campaign's `deck-facts.md` first — and re-run assemble so the packet carries it:
 
 - `fit.band` and `fit.rationale`, with `fit.counter_evidence`. The validator enforces the band's evidence rules from `references/sponsor-fit-and-outreach.md`: claim only what the fields support.
 - `outreach.reason_to_engage` with `reason_source_url` — one dated reason, at the evidence's strength.
@@ -123,7 +125,7 @@ Then write the judgement into `artifacts/dossier.json` — read `knowledge/voice
 
 ## 6 · Email
 
-Renders `templates/sponsor-pitch.mjs` to `artifacts/pitch.html` and `.txt` — React Email as zero-build ESM, so `node` renders it with no compile step.
+Renders `templates/sponsor-pitch.mjs` to `artifacts/pitch.html` and `.txt` — React Email as zero-build ESM, so `node` renders it with no compile step. The sender block comes from `knowledge/agency/sender.json`; the property block from the campaign packet.
 
 Refuses before rendering: any `blocked_*` target, a reason without a dated activation, an unwritten subject. Greeting: the retrieved decision-maker's first name, or `<Company> team` when none was retrieved.
 
@@ -161,9 +163,10 @@ Open on trigger.
 
 | Trigger | File |
 | --- | --- |
-| Hunting net-new sponsors | `fixtures/comparable-events.json` via `npm run discover -- --list` |
-| Any outreach prose | `knowledge/voice/voice-profile.md` |
-| Citing a festival fact, naming a tier | `knowledge/deck-facts.md` |
+| Hunting net-new sponsors | the campaign's `comparable-events.json` via `npm run discover -- --list` |
+| Any outreach prose | `knowledge/agency/trifecta-profile.md` |
+| The deck's vocabulary and register line | the campaign's `deck-register.md` |
+| Citing a property fact, naming a tier | the campaign's `deck-facts.md` |
 | Writing prose | `references/writing-quality.md` |
 | Building the pitch | `references/sponsor-fit-and-outreach.md` |
 | Field shape unclear | `references/sponsor-dossier-contract.md` |
@@ -179,7 +182,7 @@ Open on trigger.
 | Draft greets "team" instead of a name | No decision-maker URL supplied | Ask the client for the exact profile URL; never invent a name |
 | Every target rejected at step 1 | Domain column empty | The client supplies domains; the skill never resolves them |
 | Validate fails on unwritten judgement | Step 5's authoring half skipped | Write fit and outreach into the dossier, re-run assemble |
-| Validator flags a package | Named something outside the rate card | Name a tier verbatim from `knowledge/deck-facts.md`, or nothing |
-| `lint_pitch` exits 1 | Deck register or an unsourced number leaked into the email | Rewrite in the sender's register; facts from `knowledge/deck-facts.md` only |
+| Validator flags a package | Named something outside the rate card | Name a tier verbatim from the campaign's `deck-facts.md`, or nothing |
+| `lint_pitch` exits 1 | Deck register or an unsourced number leaked into the email | Rewrite in the sender's register; facts from the campaign's `deck-facts.md` only |
 | Pitch renders in the neutral scheme | No campaign tokens | `npm run brand`, then check the evidence counts in `artifacts/brand-tokens.json` |
 | Dashboard shows an old run | Serving a stale process | The page reads per request; refresh, or restart `dashboard:serve` |
