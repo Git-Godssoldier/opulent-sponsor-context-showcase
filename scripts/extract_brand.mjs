@@ -103,7 +103,13 @@ function fromDeck(deckPath) {
   // so a purple deck with four purples still yields purple + orange, not two purples.
   const accent2 = saturated.find((h) => accent && Math.abs(hue(h) - hue(accent)) > 40) ?? null;
 
-  const faces = Object.entries(faceCounts).sort((a, b) => b[1] - a[1]).map(([f]) => f);
+  // "Proxima Nova Th" is the Thin cut of Proxima Nova, not a family. Strip trailing
+  // weight tokens so the tokens name families a font stack can actually reference.
+  const WEIGHTS = /\s+(Th|Thin|Hairline|Lt|Light|Rg|Regular|Md|Medium|Sb|Semi[Bb]old|Bd|Bold|Blk|Black|Hv|Heavy|Cond|Condensed)$/;
+  const family = (f) => { let s = f; while (WEIGHTS.test(s)) s = s.replace(WEIGHTS, ""); return s; };
+  const familyCounts = {};
+  for (const [f, n] of Object.entries(faceCounts)) familyCounts[family(f)] = (familyCounts[family(f)] ?? 0) + n;
+  const faces = Object.entries(familyCounts).sort((a, b) => b[1] - a[1]).map(([f]) => f);
   return {
     source: { kind: "deck", file: basename(deckPath), slides: slideNames.length },
     palette: {

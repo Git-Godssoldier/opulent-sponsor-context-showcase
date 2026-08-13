@@ -23,7 +23,7 @@
  */
 import { createElement as h } from "react";
 import {
-  Body, Column, Container, Head, Hr, Html, Link,
+  Body, Column, Container, Head, Hr, Html, Img, Link,
   Preview, Row, Section, Text,
 } from "@react-email/components";
 
@@ -65,7 +65,7 @@ function resolveBrand(brand) {
 }
 
 export function SponsorPitch({
-  recipientFirstName,
+  greetingName,
   companyName,
   personalNote,
   reasonSourceUrl,
@@ -83,6 +83,7 @@ export function SponsorPitch({
   senderCompany,
   optOutUrl,
   previewText,
+  heroImageUrl,
   brand = null,
 }) {
   const { p, stackBody, stackDisplay } = resolveBrand(brand);
@@ -146,9 +147,17 @@ export function SponsorPitch({
           } }, festivalName),
         ),
 
+        // An optional hosted hero: the campaign's own key art, supplied by the
+        // operator from the deck's media list, never hotlinked from a third party.
+        heroImageUrl
+          ? h(Section, null,
+              h(Img, { src: heroImageUrl, alt: `${festivalName} key art`, width: 600,
+                       style: { display: "block", width: "100%" } }))
+          : null,
+
         // The personal note opens in the recipient's world and carries the offer.
         h(Section, { style: { padding: "28px 32px 8px" } },
-          h(Text, { style: body }, `${recipientFirstName},`),
+          h(Text, { style: body }, `${greetingName},`),
           h(Text, { style: body },
             personalNote,
             reasonSourceUrl
@@ -226,7 +235,7 @@ export function SponsorPitch({
 
 // Placeholders for local preview only. Never a sample message, never sent.
 SponsorPitch.PreviewProps = {
-  recipientFirstName: "FIRST_NAME",
+  greetingName: "FIRST_NAME_OR_COMPANY_TEAM",
   companyName: "COMPANY_NAME",
   personalNote: "ONE_DATED_ACTIVATION_AND_THE_OFFER_IN_THE_SENDER_REGISTER",
   reasonSourceUrl: "https://example.com/source",
@@ -244,6 +253,7 @@ SponsorPitch.PreviewProps = {
   senderCompany: "SENDER_COMPANY",
   optOutUrl: "https://example.com/opt-out",
   previewText: "PREVIEW_TEXT_EXTENDS_THE_SUBJECT",
+  heroImageUrl: undefined,
   brand: null,
 };
 

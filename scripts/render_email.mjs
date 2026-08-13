@@ -58,10 +58,10 @@ function humanDates(startIso, endIso) {
 const f = (name) => dossier.required_fields?.[name]?.value ?? null;
 
 // ---- gate 1: compliance ----------------------------------------------------
-if (dossier.gates?.draft_gate === "blocked_compliance") {
-  console.error(`Refusing to draft: ${dossier.company} is blocked on compliance.`);
+if (String(dossier.gates?.draft_gate ?? "").startsWith("blocked")) {
+  console.error(`Refusing to draft: ${dossier.company} is ${dossier.gates.draft_gate}.`);
   console.error(`  ${dossier.gates.draft_gate_reason}`);
-  console.error(`  Clear it by having the client state the category rule, then re-run.`);
+  console.error(`  The gate clears when the client answers the question it names; then re-run.`);
   process.exit(4);
 }
 
@@ -81,7 +81,12 @@ if (dossier.required_fields?.activation_history?.state !== "retrieved") {
 }
 
 // ---- props -----------------------------------------------------------------
-const firstName = String(f("decision_maker") ?? "").split(" ")[0] || null;
+// A greeting name comes only from a retrieved profile. Without one the draft opens to
+// the company's sponsorship desk — honest and sendable, where an invented first name is
+// neither. Supplying an exact LinkedIn URL in step 2 is what personalises this line.
+const dm = dossier.required_fields?.decision_maker;
+const firstName = dm?.state === "retrieved" ? String(dm.value ?? "").split(" ")[0] || null : null;
+const greetingName = firstName ?? `${dossier.company} team`;
 
 // The highlighted tier must be the deck's own. Anything else is dropped, because
 // availability was never supplied and the sheet may state the rate card and no more.
@@ -92,7 +97,7 @@ const highlightTier = named && rateCard.some((t) => named.toLowerCase().includes
   : null;
 
 const props = {
-  recipientFirstName: firstName,
+  greetingName,
   companyName: dossier.company ?? null,
   // The personal note is authored in step 4, in the sender's register; the dated
   // reason is its floor, not its ceiling.
@@ -109,6 +114,7 @@ const props = {
     : null,
   offerSheet: rateCard,
   highlightTier,
+  heroImageUrl: dossier.outreach?.hero_image_url ?? undefined,
   callUrl: festival.sender?.calendly ?? null,
   senderName: festival.sender?.name ?? null,
   senderCompany: festival.sender?.company ?? null,
@@ -117,16 +123,17 @@ const props = {
   brand,
 };
 
-const missing = ["recipientFirstName", "companyName", "festivalName", "personalNote", "callUrl", "previewText"]
+const missing = ["companyName", "festivalName", "personalNote", "callUrl", "previewText"]
   .filter((k) => !props[k]);
+if (!dossier.outreach?.subject) missing.push("subject");
 console.log(brand
   ? `brand: ${brand.source?.file ?? brand.source?.kind ?? "tokens"} · accent ${brand.palette?.accent ?? "—"} · display ${brand.type?.display ?? "—"}`
   : "brand: neutral default (no campaign tokens; run npm run brand)");
+console.log(firstName
+  ? `greeting: ${firstName} (retrieved decision maker)`
+  : `greeting: ${greetingName} — a name renders only from a retrieved profile; supply an exact LinkedIn URL in step 2 to personalise`);
 if (missing.length) {
-  console.error(`Cannot render: ${missing.join(", ")} not populated.`);
-  if (missing.includes("recipientFirstName")) {
-    console.error("  decision_maker is unknown. Supply an exact LinkedIn profile URL and re-run the calls.");
-  }
+  console.error(`Cannot render: ${missing.join(", ")} not populated. Write them in the step 5 judgement pass.`);
   process.exit(2);
 }
 
@@ -153,6 +160,24 @@ await writeFile(resolve("artifacts/pitch.props.json"),
                    send_state: "draft_only_not_sent",
                    sender_authority: festival.sender?.authority_state ?? "unconfirmed",
                    attendance_omitted: festival.attendance?.state === "disputed" }, null, 2) + "\n");
+
+// The draft is part of the run's record: write the paths into the dossier and derive
+// the packet again, so validate and the dashboard see what was actually produced.
+const dossierPath = resolve(arg("dossier", "artifacts/dossier.json"));
+const updated = JSON.parse(await readFile(dossierPath, "utf8"));
+updated.outreach = { ...updated.outreach,
+  draft_html_path: "artifacts/pitch.html",
+  draft_text_path: "artifacts/pitch.txt",
+  review_state: "hold",
+  send_state: "draft_only_not_sent",
+};
+await writeFile(dossierPath, JSON.stringify(updated, null, 2) + "\n");
+try {
+  execFileSync("node", [resolve(import.meta.dirname, "assemble.mjs")], { stdio: "pipe" });
+  console.log("packet refreshed: draft attached to sponsors[0] and messages[]");
+} catch (err) {
+  console.error(`packet refresh failed: ${err.message} — run npm run assemble by hand`);
+}
 
 console.log(`artifacts/pitch.html  ${html.length} bytes`);
 console.log(`artifacts/pitch.txt   ${text.length} bytes`);

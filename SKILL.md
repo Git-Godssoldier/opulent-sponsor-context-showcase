@@ -6,47 +6,48 @@ license: MIT
 
 # Opulent Sponsor Context Showcase
 
-Seven commands, in order.
+Eight commands, in order.
 
 ```bash
-npm run targets                                          # 1
-npm run calls -- --domain <bare-domain> --company "<name>" # 2
-npm run signal -- --url <activation-page-url>            # 3
-npm run assemble                                         # 4
-npm run email                                            # 5
-npm run validate                                         # 6
-npm run dashboard                                        # 7
+npm run targets                                            # 1
+npm run calls -- --domain <bare-domain> --company <name>   # 2
+npm run signal -- --url <activation-page-url>              # 3
+npm run signal -- --check                                  # 3, after filling the brief
+npm run brand                                              # 4
+npm run assemble -- --target <id>                          # 5, then write the judgement
+npm run email                                              # 6
+npm run validate                                           # 7
+npm run dashboard && npm run dashboard:serve               # 8
 ```
 
 ## Invariants
 
-- `templates/` and `fixtures/` are read-only. Output goes to `artifacts/`.
+- `templates/`, `fixtures/`, and `knowledge/` are read-only. Output goes to `artifacts/`.
 - `executed` requires an HTTP response **and** a stored receipt. Otherwise `blocked_missing_credentials`, `blocked_endpoint_access`, or `failed`.
 - Absence is `unknown`. Only dated evidence sets `false`.
 - Read `artifacts/calls-summary.json`, not the receipts.
 - Pages are read. No clicks that change state.
-- **No attendance figure appears in any draft.** The client's two figures do not reconcile.
-- **A compliance-blocked target never reaches a draft.**
-- The pitch is a draft. Sender authority is unconfirmed.
+- **No attendance figure appears in any draft.** The client's two figures do not reconcile, and neither deck states one.
+- **A blocked target never reaches a draft**, whichever gate blocked it.
+- **A greeting name comes only from a retrieved profile.** Without one the draft opens to the company's sponsorship team. A name is never invented, borrowed, or guessed.
 - Outreach prose starts from `knowledge/`: read `knowledge/voice/voice-profile.md` and `knowledge/deck-facts.md` before writing any reason, subject, preview, or body. A festival fact outside `deck-facts.md` or the dossier is not written.
+- The pitch is a draft. Sender authority is unconfirmed.
 
 ## 1 · Targets
 
-Loads the client's 25-company list and applies two gates.
+Loads `targets/nocturnal-valley-targets.csv` — the client's original 25 plus the researched spirits rows — and applies three gates.
 
-Rejects rows without an exact bare domain. `Anheuser-Busch or its St. Louis distributor` is two companies with two sponsorship desks; picking one is the client's step.
+Compliance first: cannabis rows are admitted for research and marked undraftable, per the client's own email. Client-decision holds second: a row the client must resolve before any pitch (NUTRL, held until the Anheuser-Busch entry point is picked) is admitted and marked the same way. Identity last: a row without an exact bare domain is rejected, never resolved by search. Two rows ship as rejected on purpose — Volcán X.A and Cîroc are leads awaiting a client-confirmed domain, and their notes say so.
 
-Rejection is the expected case here, not a failure — the command exits 0 and reports. Read the counts.
+Every accepted row carries `unverified_against_rule`, because the three sponsors already in motion were never named. That flag stays until the client names them.
 
-Every target comes back `unverified_against_rule` because the three sponsors already in motion were never named. That flag stays on the record until they are.
+Pick one accepted, `draft_gate: open` row.
 
-Pick one accepted, `draft_gate: open` row. Note its `company` and bare `domain`.
-
-*Done: subject chosen; row, draftable, and lead counts echoed; the unverified_against_rule flag named in the report.*
+*Done: subject chosen; row, draftable, and lead counts echoed; the `unverified_against_rule` flag named in the report.*
 
 ## 2 · Calls
 
-Runs the full plan, writes `artifacts/calls-summary.json` and one receipt per call.
+Runs the full plan, writes `artifacts/calls-summary.json` and one receipt per call. Multi-word company names are safe through npm: `--company Sun Cruiser` arrives as one name.
 
 Parameter shapes differ per endpoint and are already correct in `scripts/run_calls.mjs`. Do not hand-build requests.
 
@@ -54,76 +55,83 @@ Parameter shapes differ per endpoint and are already correct in `scripts/run_cal
 - `/web/styleguide`, `/web/fonts`, `/web/screenshot` → `domain` XOR `directUrl`
 - `/utility/prefetch` → paid plan only, 403 otherwise, excluded from the plan
 
-Pass `--linkedin-url` only when the client supplied an exact profile URL. Without it the decision-maker call is omitted rather than guessed, and the pitch will stop at step 5 for want of a name.
+Pass `--linkedin-url` only when the client supplied an exact profile URL. Without it the decision-maker call is omitted rather than guessed, and the draft will greet the company's team instead of a person.
 
-`--dry-run` prints the plan. No API key → `blocked_missing_credentials`; continue to step 3 and report it. Non-200 is a finding; record and move on.
+No API key → every call is recorded `blocked_missing_credentials` and the command **exits 0**; that record is the report, and the run continues. Non-200 on a live call is a finding; record and move on.
 
-The plan costs 90 credits per target, 110 with the decision-maker call. State that before running, and reconcile it against `credits_spent` after.
+The plan costs 90 credits per target, 110 with the decision-maker call. The budget is stated in the summary before the run and reconciled against `credits_spent` after.
 
 *Done: summary written, every call terminal, spend reconciled against the 90/110 plan.*
 
 ## 3 · Signal
 
-Find one page showing this company sponsoring, activating at, or sampling into an event. A newsroom post, a festival's sponsor page, a case study.
+Find one page showing this company sponsoring, activating at, or sampling into an event. A newsroom post, a festival's sponsor page, a case study. Some sponsor pages render their lists client-side — read them in a browser session, not a raw fetch.
 
-Capture type, summary, a verbatim quote, the date, the event named, the activation form, and any competitor conflict visible on the page. Set `reason_eligible` only when the signal is dated **and** quoted.
+Capture type, summary, a verbatim quote, the date, the event named, the activation form, any scale claim, and any competitor conflict visible on the page. Set `reason_eligible` only when the signal is dated **and** quoted. Then `npm run signal -- --check`.
 
 Undated is not a signal. A sponsorship with no date cannot tell you whether the budget is live now or was live in 2019, and that difference is the entire reason to open on it.
 
-*Done: `artifacts/signal.json` written and `--check` passes.*
+*Done: `artifacts/signal.json` filled and `--check` passes.*
 
-## 4 · Assemble
+## 4 · Brand
 
-Builds `artifacts/dossier.json` and `artifacts/packet.json`.
+Extracts the campaign's visual identity into `artifacts/brand-tokens.json`: palette and type from the client's own deck in `knowledge/sources/`, ranked from slide-XML evidence counts that travel with the tokens. With a key, `-- --domain <event-domain>` merges the event site's styleguide; the deck stays primary.
 
-Every field: `value`, `state`, `confidence`, `source`, `source_url`, `observed_at`. All ten required fields appear regardless of outcome — category_fit, activation_history, audience_overlap, regional_presence, budget_signal, decision_maker, decision_maker_title, contact_route, compliance_flags, changes_since_last.
+The template is the sender's stationery and carries no event brand of its own. A new campaign is a new deck plus a re-run of this step, never a template edit.
 
-No verification provider is wired, so `contact_route` is `unknown` with that reason.
+*Done: tokens written; accent and display face match the deck by eye.*
 
-Then write the judgement the script deliberately leaves empty:
+## 5 · Assemble, then write the judgement
 
-Read `knowledge/voice/voice-profile.md` and `knowledge/deck-facts.md` first — the register comes from the first, every festival fact from the second.
+`npm run assemble -- --target <id>` builds `artifacts/dossier.json` and derives `artifacts/packet.json` from it.
 
-- `fit.band` and `fit.rationale`, carrying the argument against as well as for.
-- `outreach.reason_to_engage` — one dated reason, at the evidence's strength. Rank: dated activation at a comparable event → dated activation anywhere → regional expansion into the market → category fit alone.
-- `outreach.package_named` — a rate-card tier verbatim from `knowledge/deck-facts.md`, or empty. The template drops a line that names anything else.
+Every field: `value`, `state`, `confidence`, `source`, `source_url`, `observed_at`. All ten required fields appear regardless of outcome. Client-supplied facts assemble as `Estimated`, never `Verified` — `Verified` is reserved for retrieved records. No verification provider is wired, so `contact_route` is `unknown` with that reason.
+
+**Re-running assemble is safe**: the authored `fit` and `outreach` blocks in an existing dossier survive, and the packet is re-derived from the merged result. `--fresh` discards them deliberately.
+
+Then write the judgement into `artifacts/dossier.json` — read `knowledge/voice/voice-profile.md` and `knowledge/deck-facts.md` first — and re-run assemble so the packet carries it:
+
+- `fit.band` and `fit.rationale`, with `fit.counter_evidence`. The validator enforces the band's evidence rules from `references/sponsor-fit-and-outreach.md`: claim only what the fields support.
+- `outreach.reason_to_engage` with `reason_source_url` — one dated reason, at the evidence's strength.
+- `outreach.personal_note` — the sender's register; the reason is its floor.
+- `outreach.package_named` — a rate-card tier verbatim, or empty. Availability is never implied.
 - `outreach.subject` and `preview_text`, written last, together.
 
-*Done: ten fields present, every `Verified` field has a source URL, fit band written.*
+*Done: ten fields present, judgement written, re-assemble run, packet's sponsor carries the fit band.*
 
-## 5 · Email
+## 6 · Email
 
-Renders `templates/sponsor-pitch.mjs` to `artifacts/pitch.html` and `.txt` — React Email as zero-build ESM, so `node` renders it with no compile step. Customising the pitch is editing that one file and re-running this command.
+Renders `templates/sponsor-pitch.mjs` to `artifacts/pitch.html` and `.txt` — React Email as zero-build ESM, so `node` renders it with no compile step.
 
-The template is the sender's stationery and carries no event brand. Campaign identity comes from `artifacts/brand-tokens.json`, extracted from the campaign deck on first render; `npm run brand -- --domain <event-domain>` re-extracts and merges the event site's styleguide when a key is present. A new campaign is a new deck in `knowledge/sources/` and a re-run, never a template edit.
+Refuses before rendering: any `blocked_*` target, a reason without a dated activation, an unwritten subject. Greeting: the retrieved decision-maker's first name, or `<Company> team` when none was retrieved.
 
-Load `knowledge/voice/voice-profile.md`, `references/writing-quality.md`, and the house-voice section of `references/sponsor-fit-and-outreach.md` first.
+Props come from the dossier and the festival packet. A prop without evidence is omitted; its section does not render. Body order: personal note → event block → the offer sheet (the deck's rate card, the named tier highlighted) → one action, signed Robert Dittrich. `outreach.hero_image_url` adds hosted campaign art when the operator supplies it.
 
-Two gates refuse before rendering: a compliance-blocked target, and a reason with no dated activation behind it. Both exit 4.
+After rendering, the draft paths are written into the dossier and the packet is re-derived, so the draft is part of the run's record. `npm run email` then lints the pitch; exit 1 is a finding — rewrite the pitch, never the linter.
 
-Props come from the dossier and the festival packet. A prop without evidence is omitted; its section does not render. Body order: personal note in the sender's register → the event block → the offer sheet (the deck's rate card, the named tier highlighted) → one action, signed Robert Dittrich. There is no attendance prop.
+*Done: both files render, lint exits 0, packet's `messages[]` carries the draft.*
 
-`npm run email` chains `scripts/lint_pitch.mjs`: banned phrases, em dashes, attendance-shaped numbers, tier fidelity against the rate card, one ask. Exit 1 is a finding — rewrite the pitch, never the linter.
+## 7 · Validate
 
-*Done: both files render, every claim maps to a dossier field or `knowledge/deck-facts.md`, lint exits 0, `review_state: hold`.*
+The full-gather contract. Exits non-zero on: missing required field, `Verified` without a source URL, a negative without dated evidence, `executed` without a receipt, a draft or subject on any blocked target, a package that is not a rate-card tier, a disputed attendance figure inside a message, a secret in the packet — **and, for an open target: unwritten fit band or rationale, a `strong`/`plausible` band without its required evidence or counter-evidence, missing reason/subject/preview, or no rendered draft on disk.**
 
-## 6 · Validate
+`--partial` checks structure only, for mid-run use. Step 7 runs the full contract.
 
-Exits non-zero on: missing required field, `Verified` without a source URL, a negative without dated evidence, `executed` without a receipt, a draft on a compliance-blocked target, a package named while inventory is unsupplied, a disputed attendance figure inside a message, or a secret in the packet.
+*Done: exit 0 in full mode.*
 
-*Done: exit 0.*
+## 8 · Dashboard
 
-## 7 · Dashboard
+`npm run dashboard` builds and returns. `npm run dashboard:serve` serves it; the page reads `artifacts/packet.json` **per request**, so a later run shows up on refresh without a rebuild.
 
-Builds against `artifacts/packet.json` and serves it. Confirm the sponsor card, fit band, rejected rows, open gates, and operation ledger render. Capture the view.
+Confirm the sponsor card with its fit band, refused rows, open gates, withheld attendance claims, drafted outreach, and the operation ledger render. Capture the view.
 
-Decision layer first, audit layer collapsed. `proposed`, `blocked`, and `failed` are never styled as verified. The open gates are shown, not hidden — they are the honest half of the demo.
+Decision layer first, audit layer beneath it. `proposed`, `blocked`, and `failed` are never styled as verified. The open gates are shown, not hidden — they are the honest half of the demo.
 
-*Done: build clean, view captured.*
+*Done: build clean, served view captured with the draft visible.*
 
 ## Report
 
-Capabilities run, capabilities skipped with reasons, credits spent, unknowns, and the open commercial gates.
+Capabilities run, capabilities skipped with reasons, credits planned against spent, unknowns, and the open commercial gates.
 
 ## References
 
@@ -144,10 +152,11 @@ Open on trigger.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Step 5 exits 4 on a good target | No dated activation read | Run step 3 against a real page, or drop the target |
-| Step 5 exits 2 on `recipientFirstName` | No decision maker URL supplied | Ask the client for the exact profile URL |
+| Step 6 exits 4 on a good target | No dated activation read, or a gate | Run step 3 against a real page; a gate clears only when the client answers it |
+| Draft greets "team" instead of a name | No decision-maker URL supplied | Ask the client for the exact profile URL; never invent a name |
 | Every target rejected at step 1 | Domain column empty | The client supplies domains; the skill never resolves them |
-| Validator flags a package line | Inventory still unsupplied | Remove the claim, or get the inventory |
-| Fit band looks arbitrary | Rationale written without counter-evidence | Rewrite carrying the argument against |
+| Validate fails on unwritten judgement | Step 5's authoring half skipped | Write fit and outreach into the dossier, re-run assemble |
+| Validator flags a package | Named something outside the rate card | Name a tier verbatim from `knowledge/deck-facts.md`, or nothing |
 | `lint_pitch` exits 1 | Deck register or an unsourced number leaked into the email | Rewrite in the sender's register; facts from `knowledge/deck-facts.md` only |
-| Pitch renders in the neutral scheme | No campaign tokens | `npm run brand`, then check `artifacts/brand-tokens.json` evidence counts |
+| Pitch renders in the neutral scheme | No campaign tokens | `npm run brand`, then check the evidence counts in `artifacts/brand-tokens.json` |
+| Dashboard shows an old run | Serving a stale process | The page reads per request; refresh, or restart `dashboard:serve` |

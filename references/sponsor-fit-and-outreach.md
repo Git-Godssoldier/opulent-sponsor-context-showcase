@@ -23,7 +23,7 @@ Five inputs, in the order they carry weight:
 | `category_only` | Category fit and nothing dated. Research further before drafting |
 | `blocked` | Compliance gate, or a competitor conflict the page itself names |
 
-Every band carries counter-evidence. A `strong` with nothing against it has not been examined. The most common counter-evidence here is a competitor already holding the category at a comparable festival — that is not a reason to stop, but it is a reason the first line has to change.
+Every band carries counter-evidence, and the validator enforces these rules rather than trusting them: `strong` fails validation without a retrieved activation plus retrieved regional presence or stated audience overlap. A `strong` with nothing against it has not been examined. The most common counter-evidence here is a competitor already holding the category at a comparable festival — that is not a reason to stop, but it is a reason the first line has to change.
 
 ## The reason
 
@@ -50,7 +50,7 @@ Four blocks, in order.
 What stays out:
 
 - **Any attendance number.** The client gave two figures that do not reconcile and that measure different things. A number a sponsor can puncture in one question costs more than the number was worth.
-- **Any package or inventory claim** until the client supplies the inventory. "Packages from $10,000" is a price with nothing attached to it.
+- **Any availability claim.** The offer sheet shows the deck's own rate card and may highlight one tier verbatim — that is the client's published price, not ours. Which tiers remain open is unknown, so nothing implies a tier is available or scarce.
 - **Superlatives about the festival.** The first edition earns its record in September; a track record claimed before then invites the one check that finds it missing.
 - **Any implication the sponsor already knows us, or that someone referred us.**
 

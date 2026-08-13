@@ -79,7 +79,28 @@ test("brand tokens come from the deck's own slide evidence", () => {
   assert.equal(tokens.palette.accent, "#5B2D8E");   // the deck's dominant saturated color
   assert.equal(tokens.palette.accent2, "#C15A27");  // next saturated color at a distinct hue
   assert.equal(tokens.type.display, "Cubano");
+  assert.equal(tokens.type.body, "Proxima Nova");   // "Proxima Nova Th" is a weight, not a family
   assert.ok(tokens.evidence.color_counts["5B2D8E"] >= 30, "evidence counts travel with the choice");
+});
+
+/* ---------------- the call runner ---------------- */
+
+test("npm strips quotes; a multi-word company survives anyway", () => {
+  const dir = mkdtempSync(join(tmpdir(), "calls-"));
+  run(resolve("scripts/run_calls.mjs"),
+    ["--domain", "acme.com", "--company", "Sun", "Cruiser", "--dry-run"], { cwd: dir });
+  const summary = JSON.parse(readFileSync(join(dir, "artifacts/calls-summary.json"), "utf8"));
+  assert.equal(summary.subject.company, "Sun Cruiser");
+});
+
+test("a missing key records blocked and exits 0, so the run continues", () => {
+  const dir = mkdtempSync(join(tmpdir(), "calls-"));
+  run(resolve("scripts/run_calls.mjs"),
+    ["--domain", "acme.com", "--company", "Acme"],
+    { cwd: dir, env: { ...process.env, CONTEXT_DEV_API_KEY: "" } });
+  const summary = JSON.parse(readFileSync(join(dir, "artifacts/calls-summary.json"), "utf8"));
+  assert.equal(summary.status, "blocked_missing_credentials");
+  assert.equal(summary.planned_credits, 90);
 });
 
 /* ---------------- the voice lint ---------------- */
@@ -181,6 +202,16 @@ test("a banned category is admitted for research and blocked from drafting", () 
   assert.equal(cohort.targets[0].draft_gate, "blocked_compliance");
 });
 
+test("a client_decision hold blocks drafting without rejecting the row", () => {
+  const cohort = cohortFrom(
+    "company,category,domain,region_fit,note\nNUTRL,vodka_rtd,nutrlusa.com,national,\n",
+    EXCLUSIONS + '\nNUTRL,client_decision,"Client picks the entry point first.",meeting_context,2026-08-13',
+  );
+  assert.equal(cohort.accepted, 1);
+  assert.equal(cohort.draftable, 0);
+  assert.equal(cohort.targets[0].draft_gate, "blocked_client_decision");
+});
+
 test("an activation lead is carried as a lead, never as evidence", () => {
   const cohort = cohortFrom(
     "company,category,domain,region_fit,activation_lead,activation_lead_source,note\n" +
@@ -233,4 +264,51 @@ test("a decision-maker URL that is not an exact profile is refused", () => {
     ["--domain", "acme.com", "--company", "Acme",
      "--linkedin-url", "https://linkedin.com/company/acme", "--dry-run"],
     { cwd: mkdtempSync(join(tmpdir(), "calls-")), stdio: "pipe" }));
+});
+
+/* ---------------- the full gather ---------------- */
+
+function packetWith(mutate) {
+  const dossier = JSON.parse(JSON.stringify(dossierTemplate));
+  dossier.id = "acme"; dossier.company = "Acme"; dossier.domain = "acme.com";
+  dossier.gates = { draft_gate: "open", exclusion_check: "unverified_against_rule" };
+  dossier.conflict_check = { already_in_motion_state: "unverified_against_rule" };
+  const packet = {
+    schema_version: "1.0.0", source_mode: "dry_run", sponsors: [dossier],
+    context_operations: [{ capability: "x", endpoint: "https://api.context.dev/v1/brand/retrieve",
+      write_policy: "artifact_only_no_send", status: "dry_run" }],
+    open_gates: [], messages: [],
+    festival: { event_name: "Fest", rate_card: [{ tier: "Sampling Partner", range: "$10K-$25K" }] },
+  };
+  mutate?.(packet, dossier);
+  const dir = mkdtempSync(join(tmpdir(), "gather-"));
+  writeFileSync(join(dir, "packet.json"), JSON.stringify(packet));
+  return { dir, file: join(dir, "packet.json") };
+}
+
+function validateRun(file, dir, flags = []) {
+  try {
+    run(resolve("scripts/validate_packet.mjs"), [file, ...flags], { cwd: dir, stdio: "pipe" });
+    return { code: 0, out: "" };
+  } catch (err) {
+    return { code: err.status, out: String(err.stderr) };
+  }
+}
+
+test("an open target without judgement or draft fails the full gather, and passes --partial", () => {
+  const { dir, file } = packetWith();
+  const full = validateRun(file, dir);
+  assert.equal(full.code, 1);
+  assert.match(full.out, /fit\.band is unwritten/);
+  assert.match(full.out, /no rendered draft attached/);
+  assert.equal(validateRun(file, dir, ["--partial"]).code, 0);
+});
+
+test("a strong band without its evidence is refused by name", () => {
+  const { dir, file } = packetWith((packet, dossier) => {
+    dossier.fit = { band: "strong", rationale: "r", counter_evidence: "c" };
+  });
+  const r = validateRun(file, dir);
+  assert.equal(r.code, 1);
+  assert.match(r.out, /strong requires retrieved activation_history/);
 });

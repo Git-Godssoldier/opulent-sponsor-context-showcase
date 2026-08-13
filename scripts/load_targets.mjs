@@ -31,8 +31,9 @@
  * technicality. Pitching a sponsor who is already mid-negotiation with the client is
  * the single most expensive mistake this workflow can make.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { existsSync } from "node:fs";
+import { dirname } from "node:path";
 
 const [file, ...rest] = process.argv.slice(2);
 const flag = (n, d) => { const i = rest.indexOf(`--${n}`); return i === -1 ? d : rest[i + 1]; };
@@ -91,6 +92,9 @@ const slug = (s) => String(s || "").toLowerCase().normalize("NFKD")
 // ---- exclusion rules -------------------------------------------------------
 const rules = existsSync(exclPath) ? parseCsv(readFileSync(exclPath, "utf8")) : [];
 const categoryBans = rules.filter((r) => r.scope === "compliance" && r.pattern);
+// A client_decision hold blocks drafting for one company until the client resolves a
+// question only they can answer — e.g. a subsidiary whose parent is also on the list.
+const companyHolds = rules.filter((r) => r.scope === "client_decision" && r.pattern);
 const unsuppliedRules = rules.filter((r) => !r.pattern && r.supplied_by === "unsupplied");
 
 // ---- targets ---------------------------------------------------------------
@@ -106,6 +110,7 @@ for (const [i, row] of rows.entries()) {
   // legal entity the client meant, and reporting "no domain" on a row that could never be
   // drafted anyway sends someone to find a domain that changes nothing.
   const ban = categoryBans.find((r) => r.pattern === row.category);
+  const hold = companyHolds.find((r) => slug(company) === slug(r.pattern));
 
   const problems = [];
   if (!company) problems.push("no company name");
@@ -128,9 +133,9 @@ for (const [i, row] of rows.entries()) {
     activation_lead: row.activation_lead || null,
     activation_lead_source: row.activation_lead_source || null,
     note: row.note || null,
-    draft_gate: ban ? "blocked_compliance" : "open",
-    draft_gate_reason: ban ? ban.reason : null,
-    draft_gate_source: ban ? ban.supplied_by : null,
+    draft_gate: ban ? "blocked_compliance" : hold ? "blocked_client_decision" : "open",
+    draft_gate_reason: ban ? ban.reason : hold ? hold.reason : null,
+    draft_gate_source: ban ? ban.supplied_by : hold ? hold.supplied_by : null,
     exclusion_check: unsuppliedRules.length ? "unverified_against_rule" : "clear",
     exclusion_check_reason: unsuppliedRules.map((r) => r.reason),
   });
@@ -152,13 +157,14 @@ const summary = {
   draftable: deduped.filter((t) => t.draft_gate === "open").length,
   with_activation_lead: deduped.filter((t) => t.activation_lead).length,
   blocked_compliance: deduped.filter((t) => t.draft_gate === "blocked_compliance").length,
+  blocked_client_decision: deduped.filter((t) => t.draft_gate === "blocked_client_decision").length,
   unverified_against_rule: deduped.filter((t) => t.exclusion_check === "unverified_against_rule").length,
   open_rules: unsuppliedRules.map((r) => r.reason),
   targets: deduped,
   blocked: rejected,
 };
 
-if (outPath) writeFileSync(outPath, JSON.stringify(summary, null, 2) + "\n");
+if (outPath) { mkdirSync(dirname(outPath), { recursive: true }); writeFileSync(outPath, JSON.stringify(summary, null, 2) + "\n"); }
 
 console.log(`rows:        ${rows.length}`);
 console.log(`accepted:    ${deduped.length}`);
@@ -173,6 +179,11 @@ const banned = deduped.filter((t) => t.draft_gate === "blocked_compliance");
 if (banned.length) {
   console.log(`\nblocked on compliance, researchable but not draftable:`);
   for (const b of banned) console.log(`  ${b.company} (${b.category}) — ${b.draft_gate_source}`);
+}
+const held = deduped.filter((t) => t.draft_gate === "blocked_client_decision");
+if (held.length) {
+  console.log(`\nheld for a client decision, researchable but not draftable:`);
+  for (const b of held) console.log(`  ${b.company} — ${b.draft_gate_reason}`);
 }
 if (unsuppliedRules.length) {
   console.log(`\n${deduped.length} target(s) marked unverified_against_rule:`);

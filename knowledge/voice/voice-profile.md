@@ -12,7 +12,7 @@ That is the whole model. Four moves, no throat-clearing, no enthusiasm performed
 
 **Write in this register:**
 
-- Their name, their activation, their category — the email starts in the recipient's world, and the reason it opens on comes from the dossier with its date.
+- Their name, their activation, their category — the email starts in the recipient's world, and the reason it opens on comes from the dossier with its date. A greeting name comes only from a retrieved profile; without one, open to the company's sponsorship team. An invented name is the one shortcut that turns an honest cold email into a dishonest one.
 - One idea per sentence. Facts from `deck-facts.md` or the dossier, nothing else.
 - Zone and tier names verbatim from the deck: a Sampling Partner slot at the Forest Stage is checkable; "a great partnership opportunity" is not.
 - The offer move is Bob's: fit the package to their goals, not sell them the biggest tier.

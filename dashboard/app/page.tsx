@@ -1,4 +1,9 @@
 import { readFileSync } from "node:fs";
+
+// The page reads artifacts/packet.json per request rather than per build, so a run that
+// lands after `next build` still shows up when served. A prerendered snapshot silently
+// pinned to whatever the packet held at build time.
+export const dynamic = "force-dynamic";
 import { resolve } from "node:path";
 import { SponsorCard } from "../components/sponsor-card";
 

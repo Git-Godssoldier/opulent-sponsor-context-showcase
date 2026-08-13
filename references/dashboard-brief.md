@@ -25,7 +25,7 @@ An original implementation informed by the public Opulent GTM Intelligence repor
 - A gate state renders beside the brand it gates. A sponsor's logo next to a festival they have not agreed to sponsor is the most likely misreading of this page, and the card layout is the defence.
 - List variance is shown, not reconciled. Where the client list and the public record disagree, both appear.
 - Zero states are honest: an empty packet renders the empty template's own words.
-- Data comes from `artifacts/packet.json`, falling back to the empty template. The page renders what the run produced and neither invents nor summarises past it.
+- Data comes from `artifacts/packet.json`, falling back to the empty template, read **per request** rather than per build — a run that lands after the build shows up on refresh. The page renders what the run produced and neither invents nor summarises past it.
 
 ## Accessibility
 

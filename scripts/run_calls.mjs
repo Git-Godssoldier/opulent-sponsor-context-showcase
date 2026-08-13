@@ -25,10 +25,17 @@ const BASE = "https://api.context.dev/v1";
 const OUT = "artifacts";
 
 function args(argv) {
+  // A flag's value runs until the next --flag. npm strips the quotes from
+  // `npm run calls -- --company "Sun Cruiser"`, so the two tokens must rejoin here —
+  // silently keeping only "Sun" was how a multi-word company lost its name.
   const a = {};
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--dry-run") a.dryRun = true;
-    else if (argv[i].startsWith("--")) a[argv[i].slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = argv[++i];
+    if (argv[i] === "--dry-run") { a.dryRun = true; continue; }
+    if (!argv[i].startsWith("--")) continue;
+    const key = argv[i].slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    const parts = [];
+    while (i + 1 < argv.length && !argv[i + 1].startsWith("--")) parts.push(argv[++i]);
+    a[key] = parts.join(" ");
   }
   return a;
 }
@@ -108,7 +115,10 @@ if (a.dryRun || !key) {
   console.log(`${reason}: ${calls.length} calls planned, ${plannedCredits} credits budgeted, none executed`);
   for (const c of calls) console.log(`  ${c.id.padEnd(20)} ${c.method.padEnd(5)} ${c.path}`);
   if (!a.linkedinUrl) console.log("\nno --linkedin-url: decision maker call omitted, not guessed");
-  process.exit(key || a.dryRun ? 0 : 1);
+  // A missing key is a recorded outcome, not a failure: every call is written to the
+  // summary as blocked, which is exactly the report SKILL step 2 asks for. Exit 0 so
+  // the pipeline continues to the signal step the way the docs say it does.
+  process.exit(0);
 }
 
 const summary = [];

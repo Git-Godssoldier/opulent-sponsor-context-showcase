@@ -10,10 +10,11 @@
     "assemble": "node scripts/assemble.mjs",
     "email": "node scripts/render_email.mjs && node scripts/lint_pitch.mjs",
     "validate": "node scripts/validate_packet.mjs artifacts/packet.json",
-    "dashboard": "npm --prefix dashboard run build && npm --prefix dashboard run start",
+    "dashboard": "npm --prefix dashboard run build",
     "test": "node --test tests/*.test.mjs",
     "lint:pitch": "node scripts/lint_pitch.mjs",
-    "brand": "node scripts/extract_brand.mjs"
+    "brand": "node scripts/extract_brand.mjs",
+    "dashboard:serve": "npm --prefix dashboard run start"
   },
   "engines": {
     "node": ">=20"

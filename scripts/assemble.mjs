@@ -10,6 +10,13 @@
  * the fit band, the reason to engage, and the package to name are yours to write in
  * afterwards, against the rules in references/sponsor-fit-and-outreach.md.
  *
+ * Re-running is safe: the authored judgement (`fit`, `outreach`) in an existing
+ * artifacts/dossier.json survives a re-assemble, because wiping a person's judgement to
+ * refresh a receipt is how a finished run silently loses its conclusions. `--fresh`
+ * discards it deliberately. The packet is always derived from the merged dossier, so
+ * everything the run knows — fields, judgement, and any rendered draft — lands in one
+ * artifact the validator and the dashboard both read.
+ *
  * templates/ is never written to.
  */
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
@@ -49,6 +56,15 @@ const targets = cohort.targets ?? [];
 const subject = (targetId ? targets.find((t) => t.id === targetId) : targets.find((t) => t.domain === summary.subject?.domain)) ?? targets[0] ?? {};
 
 const dossier = await read("templates/sponsor-dossier.template.json");
+
+// Judgement survives a re-run. Everything mechanical is rebuilt below; these two
+// blocks are authored by a person or the step-4 agent and are theirs to keep.
+const prior = process.argv.includes("--fresh") ? null : await maybe("artifacts/dossier.json");
+if (prior && (prior.id === (subject.id ?? prior.id))) {
+  if (prior.fit) dossier.fit = prior.fit;
+  if (prior.outreach) dossier.outreach = { ...dossier.outreach, ...prior.outreach };
+}
+
 dossier.id = subject.id ?? null;
 dossier.company = brand?.title ?? subject.company ?? summary.subject?.company ?? null;
 dossier.domain = subject.domain ?? summary.subject?.domain ?? null;
@@ -69,7 +85,14 @@ dossier.gates = {
 const brandUrl = dossier.domain ? `https://${dossier.domain}` : null;
 const R = dossier.required_fields;
 
-R.category_fit = field(subject.category ?? brand?.industries?.eic ?? null, "client_list+brand_retrieve", brandUrl);
+// Client-supplied is not verified. The list's category is real input, but Verified is
+// reserved for a retrieved record; until /brand/retrieve has run, the field is Estimated
+// with the list as its named source and no URL it never actually came from.
+R.category_fit = brand
+  ? field(brand.industries?.eic ?? subject.category ?? null, "brand_retrieve", brandUrl)
+  : subject.category
+    ? { value: subject.category, state: "supplied", confidence: "Estimated", source: "client_list", source_url: null, observed_at: now }
+    : field(null, null, null);
 R.regional_presence = field(brand?.address ?? null, "brand_retrieve", brandUrl);
 
 // The activation signal is the one field the pitch is allowed to open on, so it only
@@ -100,8 +123,13 @@ R.contact_route = { value: null, state: "unknown", confidence: "Unknown", source
 R.audience_overlap = { value: null, state: "unknown", confidence: "Unknown", source: null, source_url: null,
   observed_at: null, reason: "Requires the company's own stated audience, read off their site or a media kit. Inferring it from the product category is how a pitch ends up claiming an overlap the sponsor does not recognise." };
 
-R.budget_signal = { value: null, state: "unknown", confidence: "Unknown", source: null, source_url: null,
-  observed_at: null, reason: "Requires a dated activation at a known scale. Absence is unknown, never 'no budget'." };
+// The signal brief's scale claim is exactly the dated-activation-at-known-scale this
+// field asks for, so an eligible signal that carries one resolves it.
+R.budget_signal = signal.reason_eligible === true && signal.scale_claim
+  ? { value: signal.scale_claim, state: "retrieved", confidence: "Verified", source: signal.signal_type,
+      source_url: signal.source_url, observed_at: signal.observed_at }
+  : { value: null, state: "unknown", confidence: "Unknown", source: null, source_url: null,
+      observed_at: null, reason: "Requires a dated activation at a known scale. Absence is unknown, never 'no budget'." };
 
 R.compliance_flags = subject.draft_gate === "blocked_compliance"
   ? { value: [subject.draft_gate_reason], state: "retrieved", confidence: "Verified",
@@ -164,6 +192,19 @@ Object.assign(packet, {
   },
   excluded: (cohort.blocked ?? []).map((b) => ({ company: b.company, category: b.category, reason: (b.problems ?? []).join("; ") })),
   sponsors: [dossier],
+  // A rendered draft is part of the run's record. The dossier's draft paths are the
+  // source of truth; the packet's messages list is derived so the validator and the
+  // dashboard read the same fact.
+  messages: dossier.outreach?.draft_html_path ? [{
+    sponsor_id: dossier.id,
+    subject: dossier.outreach.subject ?? null,
+    preview_text: dossier.outreach.preview_text ?? null,
+    package_named: dossier.outreach.package_named ?? null,
+    draft_html_path: dossier.outreach.draft_html_path,
+    draft_text_path: dossier.outreach.draft_text_path ?? null,
+    review_state: dossier.outreach.review_state ?? "hold",
+    send_state: "draft_only_not_sent",
+  }] : [],
   festival: {
     event_name: festival.event_name,
     dates: `${festival.dates.start} to ${festival.dates.end}`,

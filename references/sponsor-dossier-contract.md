@@ -40,7 +40,9 @@ All ten appear whatever the outcome. A field missing from the packet is worse th
 
 ## Gates
 
-`gates.draft_gate` is `open` or `blocked_compliance`. Blocked targets may be researched and may appear in the packet. They may not carry a subject line or a draft path, and step 5 refuses them.
+`gates.draft_gate` is `open`, `blocked_compliance`, or `blocked_client_decision`. Blocked targets may be researched and may appear in the packet. They may not carry a subject line or a draft path, and the email step refuses them.
+
+The two blocks answer different questions. Compliance blocks a category the client's own email flagged (cannabis: age and activation limits, undraftable until the client states the rule). A client-decision hold blocks one company until the client answers a question only they can (NUTRL, until the Anheuser-Busch entry point is picked). Alcohol categories are draftable: the client's list included them without restriction, and their age-gating is an activation-form note, not a draft ban — the distinction the cannabis email drew.
 
 `gates.exclusion_check` is `clear` or `unverified_against_rule`. It is `unverified_against_rule` for every target while the client's exclusion list and the three sponsors already in motion remain unsupplied. The validator will not accept any other value.
 
@@ -56,18 +58,29 @@ Bands and their requirements are in `sponsor-fit-and-outreach.md`.
 
 `outreach.reason_to_engage` needs `reason_source_url`. `outreach.send_state` is always `draft_only_not_sent`. `outreach.sender_authority` is `unconfirmed` until the client names the sending account.
 
-`outreach.package_named` stays null while `festival.packages.inventory_state` is `unsupplied`. The validator checks the pair.
+`outreach.package_named` is a rate-card tier verbatim, or null. The rate card is the deck's own (slide 7) and may be shown and named; availability was never supplied and is never implied. The validator checks the tier name on the sponsor record and on every derived message.
+
+A rendered draft writes `draft_html_path` and `draft_text_path` into the dossier, and the packet derives `messages[]` from them — one artifact carries the whole run.
 
 ## What the validator refuses
+
+Structure, in every mode:
 
 - A required field missing, or present with no `state`.
 - `confidence: Verified` with no `source_url`.
 - A negative value on an activity field without `state: retrieved`.
 - `contact_route` with a non-null value.
-- A draft path or subject line on a compliance-blocked target.
-- `already_in_motion_state` set to anything but `clear` or `unverified_against_rule`.
+- A draft path or subject line on any blocked target.
+- A named package that is not a rate-card tier, on the sponsor or in a message.
+- `already_in_motion_state` set to anything but `clear` or `unverified_against_rule` — and `clear` only once the client's exclusion gate is resolved.
 - `send_state` other than `draft_only_not_sent`.
 - An `executed` operation with no receipt.
-- A package named while inventory is unsupplied.
 - A disputed attendance figure inside a drafted message.
 - A bearer token or API key anywhere in the packet.
+
+The full gather, in default mode (`--partial` skips only this block):
+
+- An open target with `fit.band` or `fit.rationale` unwritten.
+- A `strong` or `plausible` band without its evidence rule met, or without counter-evidence.
+- Missing `reason_to_engage`, `reason_source_url`, `subject`, or `preview_text`.
+- No rendered draft attached, or draft paths pointing at files that do not exist.

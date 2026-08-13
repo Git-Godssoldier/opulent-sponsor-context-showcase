@@ -2,16 +2,24 @@
 /**
  * validate_packet.mjs — enforce the packet contract.
  *
- *   node scripts/validate_packet.mjs [artifacts/packet.json]
+ *   node scripts/validate_packet.mjs [artifacts/packet.json] [--partial]
  *
  * Exits non-zero on anything a reader could mistake for a stronger claim than the run
  * actually made. The checks are deliberately blunt: a validator that warns gets ignored.
+ *
+ * By default it also enforces completeness — the full gather. A run that reaches this
+ * step carries written judgement and an attached draft, or says in gate vocabulary why
+ * it cannot: fit band with its evidence, counter-evidence, a sourced reason, subject and
+ * preview, and the rendered files on disk. `--partial` skips only that block, for
+ * checking structure mid-run; step 7 runs the full contract.
  */
 
 import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-const target = resolve(process.cwd(), process.argv[2] ?? "artifacts/packet.json");
+const partial = process.argv.includes("--partial");
+const target = resolve(process.cwd(), process.argv.find((a, i) => i >= 2 && !a.startsWith("--")) ?? "artifacts/packet.json");
 const packet = JSON.parse(await readFile(target, "utf8"));
 const failures = [];
 
@@ -66,11 +74,51 @@ for (const s of packet.sponsors ?? []) {
       `${id}: ${name} may only be false with retrieved evidence`);
   }
 
-  // A compliance-blocked target never carries a draft.
-  if (s.gates?.draft_gate === "blocked_compliance") {
+  // A blocked target never carries a draft, whichever gate blocked it.
+  const gate = s.gates?.draft_gate ?? "open";
+  if (gate.startsWith("blocked")) {
     check(!s.outreach?.draft_html_path && !s.outreach?.draft_text_path,
-      `${id}: blocked on compliance but carries a draft path`);
-    check(!s.outreach?.subject, `${id}: blocked on compliance but carries a subject line`);
+      `${id}: ${gate} but carries a draft path`);
+    check(!s.outreach?.subject, `${id}: ${gate} but carries a subject line`);
+  }
+
+  // The named package is the deck's own tier, on the sponsor record as well as in
+  // any message derived from it.
+  if (s.outreach?.package_named) {
+    const tiersHere = (packet.festival?.rate_card ?? []).map((t) => String(t.tier).toLowerCase());
+    check(tiersHere.some((n) => String(s.outreach.package_named).toLowerCase().includes(n)),
+      `${id}: outreach.package_named is not a rate-card tier: ${s.outreach.package_named}`);
+  }
+
+  // ---- the full gather ------------------------------------------------------
+  // Judgement and draft are required of an open target by the time validation runs.
+  // fit bands: strong and plausible are claims about evidence, so the evidence rules
+  // from sponsor-fit-and-outreach.md are enforced here rather than trusted.
+  if (!partial && !gate.startsWith("blocked")) {
+    const bands = ["strong", "plausible", "category_only", "blocked"];
+    check(bands.includes(s.fit?.band), `${id}: fit.band is unwritten — the run's judgement is part of the gather`);
+    check(Boolean(s.fit?.rationale), `${id}: fit.rationale is empty`);
+    if (["strong", "plausible"].includes(s.fit?.band)) {
+      check(Boolean(s.fit?.counter_evidence), `${id}: a ${s.fit.band} band with no counter-evidence has not been examined`);
+    }
+    const st = (name) => fields[name]?.state === "retrieved";
+    if (s.fit?.band === "strong") {
+      check(st("activation_history") && (st("regional_presence") || st("audience_overlap")),
+        `${id}: strong requires retrieved activation_history plus retrieved regional_presence or audience_overlap`);
+    }
+    if (s.fit?.band === "plausible") {
+      check(st("activation_history") || (st("regional_presence") && st("audience_overlap")),
+        `${id}: plausible requires a retrieved activation, or retrieved regional_presence and audience_overlap together`);
+    }
+    check(Boolean(s.outreach?.reason_to_engage), `${id}: reason_to_engage is unwritten`);
+    check(Boolean(s.outreach?.reason_source_url), `${id}: reason_to_engage has no source URL`);
+    check(Boolean(s.outreach?.subject), `${id}: subject is unwritten`);
+    check(Boolean(s.outreach?.preview_text), `${id}: preview_text is unwritten`);
+    check(Boolean(s.outreach?.draft_html_path), `${id}: no rendered draft attached — run npm run email`);
+    for (const key of ["draft_html_path", "draft_text_path"]) {
+      const p = s.outreach?.[key];
+      if (p) check(existsSync(resolve(process.cwd(), p)), `${id}: ${key} points at ${p}, which does not exist`);
+    }
   }
 
   // Clearance is only available once the gate that supplies it is resolved. While the
@@ -115,6 +163,11 @@ for (const m of packet.messages ?? []) {
       `message names a package that is not a rate-card tier: ${m.package_named}`);
   }
 }
+if (!partial) {
+  const openSponsors = (packet.sponsors ?? []).filter((s) => !String(s.gates?.draft_gate ?? "open").startsWith("blocked"));
+  check(!openSponsors.length || (packet.messages ?? []).length >= 1,
+    "an open target reached validation with no message derived — re-run npm run assemble after npm run email");
+}
 
 // ---- secrets ---------------------------------------------------------------
 const serialized = JSON.stringify(packet).toLowerCase();
@@ -127,7 +180,7 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   process.stdout.write(`${JSON.stringify({
-    status: "valid", target,
+    status: "valid", mode: partial ? "partial" : "full", target,
     sponsors: packet.sponsors.length,
     operations: packet.context_operations.length,
     open_gates: (packet.open_gates ?? []).filter((g) => g.state !== "resolved").length,

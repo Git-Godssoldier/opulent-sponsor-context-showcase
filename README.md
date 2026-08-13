@@ -2,24 +2,25 @@
 
 A skill for Opulent. It takes one sponsor target from a client's list, takes it as far as public evidence allows, and produces a sourced fit dossier, a drafted pitch, and a dashboard showing the whole chain — including what the run could not answer.
 
-This repository holds the **instructions and the output contract**. It performs no extraction and ships no gathered data. The templates are empty on purpose.
+This repository holds the instructions, the output contract, and the client's own materials: `knowledge/` carries the two sponsorship decks bit-for-bit with their claims extracted and cited, because outreach authors from them. It gathers no third-party data at rest — run artifacts stay out of git, and the templates are empty on purpose.
 
 ## What it does
 
-Depth over breadth is the point. Thirty shallow rows prove nothing a language model cannot produce in a minute — which is exactly where the client's list came from. One target taken to the limit of the evidence proves a method.
+Depth over breadth is the point. A stack of shallow rows proves nothing a language model cannot produce in a minute — which is exactly where the client's list came from. One target taken to the limit of the evidence proves a method.
 
 A company name and a bare domain go in. The run validates the entity before spending anything on it, exhausts the provider surface on the company — brand resolution, industry codes, sitemap, bounded crawl, screenshot, styleguide, dated public signals — reads one dated activation page, and drafts one pitch whose every sentence traces back to a field the run produced. The dashboard shows the identity fixed before retrieval, the page each field came from, what the run cost, and the eight commercial questions nobody has answered yet.
 
 ## Run it
 
 ```bash
-npm run targets                                            # validate the client list, apply both gates
-npm run calls -- --domain <bare-domain> --company "<name>" # the full provider plan
+npm run targets                                            # gate the client list
+npm run calls -- --domain <bare-domain> --company <name>   # the full provider plan
 npm run signal -- --url <activation-page>                  # one dated activation, read in a browser
-npm run assemble                                           # dossier + packet
-npm run email                                              # React Email pitch, draft only
-npm run validate                                           # check the packet against the contract
-npm run dashboard                                          # build and serve
+npm run brand                                              # campaign identity from the deck
+npm run assemble -- --target <id>                          # dossier + packet; judgement survives re-runs
+npm run email                                              # React Email pitch, draft only, voice-linted
+npm run validate                                           # the full-gather contract
+npm run dashboard && npm run dashboard:serve               # build returns; serve reads the packet live
 npm test                                                   # contract tests
 ```
 
