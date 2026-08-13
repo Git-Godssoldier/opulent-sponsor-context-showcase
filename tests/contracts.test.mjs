@@ -285,8 +285,12 @@ function packetWith(mutate) {
   dossier.conflict_check = { already_in_motion_state: "unverified_against_rule" };
   const packet = {
     schema_version: "1.0.0", source_mode: "dry_run", sponsors: [dossier],
-    context_operations: [{ capability: "x", endpoint: "https://api.context.dev/v1/brand/retrieve",
-      write_policy: "artifact_only_no_send", status: "dry_run" }],
+    context_operations: [
+      { capability: "x", endpoint: "https://api.context.dev/v1/brand/retrieve",
+        write_policy: "artifact_only_no_send", status: "dry_run" },
+      { capability: "monid gap-fill", endpoint: "monid:someprovider/some/endpoint",
+        write_policy: "artifact_only_no_send", status: "blocked_endpoint_access" },
+    ],
     open_gates: [], messages: [],
     festival: { event_name: "Fest", rate_card: [{ tier: "Sampling Partner", range: "$10K-$25K" }] },
   };

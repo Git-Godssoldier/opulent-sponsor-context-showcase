@@ -67,6 +67,8 @@ Read the sponsor page in a browser session and fill the brief: one entry per spo
 
 Work tiers in order and stop when the draftable pool covers the ask — the client needs roughly seven net-new sponsors, not a census.
 
+Monid is the second discovery surface when the browser harvest runs dry: `monid discover -q "festival sponsor list"`, inspect, run, and log receipts per `references/monid-capabilities.md`. Keyless it records `blocked_missing_credentials` and the run continues.
+
 *Done: harvests checked and emitted; `npm run targets` re-run showing the discovered count.*
 
 ## 2 · Calls
@@ -84,6 +86,8 @@ Pass `--linkedin-url` only when the client supplied an exact profile URL. Withou
 No API key → every call is recorded `blocked_missing_credentials` and the command **exits 0**; that record is the report, and the run continues. Non-200 on a live call is a finding; record and move on.
 
 The plan costs 90 credits per target, 110 with the decision-maker call. The budget is stated in the summary before the run and reconciled against `credits_spent` after.
+
+Where the plan cannot answer — a gated decision maker, audience overlap, activation scale — Monid gap-fills through its own loop and ledger (`references/monid-capabilities.md`). One provider per fact; the fixed plan first.
 
 *Done: summary written, every call terminal, spend reconciled against the 90/110 plan.*
 
@@ -171,6 +175,7 @@ Open on trigger.
 | Building the pitch | `references/sponsor-fit-and-outreach.md` |
 | Field shape unclear | `references/sponsor-dossier-contract.md` |
 | Adding a provider call | `references/contextdev-capabilities.md` |
+| Monid discovery or gap-fill enrichment | `references/monid-capabilities.md` |
 | Changing the dashboard | `references/dashboard-brief.md` |
 | Claim boundary unclear | `references/evidence-policy.md` |
 

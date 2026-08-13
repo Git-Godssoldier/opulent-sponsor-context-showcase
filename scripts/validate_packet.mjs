@@ -139,7 +139,7 @@ for (const s of packet.sponsors ?? []) {
 
 // ---- operation ledger ------------------------------------------------------
 for (const op of packet.context_operations ?? []) {
-  check(/^https:\/\/api\.context\.dev\/v1\//.test(op.endpoint ?? ""), `${op.capability}: endpoint is not a Context.dev v1 path`);
+  check(/^https:\/\/api\.context\.dev\/v1\/|^monid:/.test(op.endpoint ?? ""), `${op.capability}: endpoint is neither a Context.dev v1 path nor a monid run`);
   check(op.write_policy === "artifact_only_no_send", `${op.capability}: unsafe write policy`);
   check(op.status !== "executed" || Boolean(op.receipt), `${op.capability}: executed operation has no receipt`);
   check(["executed", "failed", "proposed", "dry_run", "blocked_missing_credentials", "blocked_endpoint_access"].includes(op.status),

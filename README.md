@@ -70,6 +70,7 @@ templates/
   sponsor-pitch.mjs               React Email, zero-build ESM, brand-token driven
 references/
   contextdev-capabilities.md      every provider call, its credit cost, when to reach for it
+  monid-capabilities.md           the second provider lane: discover -> inspect -> run, with receipts
   sponsor-dossier-contract.md     the field envelope and the rules the validator enforces
   sponsor-fit-and-outreach.md     fit bands, reason ranking, message build, house voice
   writing-quality.md              word-level rules, with the full swap tables

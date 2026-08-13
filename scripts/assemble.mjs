@@ -225,17 +225,36 @@ Object.assign(packet, {
     window: festival.window,
     source_materials: festival.source_materials,
   },
-  context_operations: (summary.calls ?? []).map((c) => ({
-    sponsor_id: dossier.id,
-    capability: c.capability,
-    method: c.method,
-    endpoint: `https://api.context.dev/v1${c.endpoint ?? c.path}`,
-    status: c.status,
-    http_status: c.http_status ?? null,
-    credits: c.credits ?? null,
-    receipt: c.receipt ?? null,
-    write_policy: "artifact_only_no_send",
-  })),
+  context_operations: [
+    ...(summary.calls ?? []).map((c) => ({
+      sponsor_id: dossier.id,
+      capability: c.capability,
+      method: c.method,
+      endpoint: `https://api.context.dev/v1${c.endpoint ?? c.path}`,
+      status: c.status,
+      http_status: c.http_status ?? null,
+      credits: c.credits ?? null,
+      receipt: c.receipt ?? null,
+      write_policy: "artifact_only_no_send",
+    })),
+    // The Monid lane: hand-kept run ledger, same evidence contract. COMPLETED earns
+    // executed only alongside its receipt; everything else maps to the exact status
+    // vocabulary the validator already enforces.
+    ...((await maybe("artifacts/monid-runs.json")) ?? []).map((r) => ({
+      sponsor_id: dossier.id,
+      capability: r.capability ?? `${r.provider}${r.endpoint}`,
+      method: "RUN",
+      endpoint: `monid:${r.provider}${r.endpoint}`,
+      status: r.status === "COMPLETED" && r.receipt ? "executed"
+        : r.status === "BLOCKED" ? "blocked_endpoint_access"
+        : ["FAILED", "TIME_OUT", "STOPPED"].includes(r.status) ? "failed"
+        : "proposed",
+      run_id: r.run_id ?? null,
+      credits: r.credits_note ?? null,
+      receipt: r.receipt ?? null,
+      write_policy: "artifact_only_no_send",
+    })),
+  ],
   data_health: {
     field_coverage_pct: Math.round(Object.values(R).filter((x) => x.state === "retrieved").length / Object.keys(R).length * 100),
     null_rates: {},
