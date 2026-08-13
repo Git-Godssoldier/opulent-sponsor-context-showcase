@@ -95,6 +95,8 @@ Read `knowledge/voice/voice-profile.md` and `knowledge/deck-facts.md` first — 
 
 Renders `templates/sponsor-pitch.mjs` to `artifacts/pitch.html` and `.txt` — React Email as zero-build ESM, so `node` renders it with no compile step. Customising the pitch is editing that one file and re-running this command.
 
+The template is the sender's stationery and carries no event brand. Campaign identity comes from `artifacts/brand-tokens.json`, extracted from the campaign deck on first render; `npm run brand -- --domain <event-domain>` re-extracts and merges the event site's styleguide when a key is present. A new campaign is a new deck in `knowledge/sources/` and a re-run, never a template edit.
+
 Load `knowledge/voice/voice-profile.md`, `references/writing-quality.md`, and the house-voice section of `references/sponsor-fit-and-outreach.md` first.
 
 Two gates refuse before rendering: a compliance-blocked target, and a reason with no dated activation behind it. Both exit 4.
@@ -148,3 +150,4 @@ Open on trigger.
 | Validator flags a package line | Inventory still unsupplied | Remove the claim, or get the inventory |
 | Fit band looks arbitrary | Rationale written without counter-evidence | Rewrite carrying the argument against |
 | `lint_pitch` exits 1 | Deck register or an unsourced number leaked into the email | Rewrite in the sender's register; facts from `knowledge/deck-facts.md` only |
+| Pitch renders in the neutral scheme | No campaign tokens | `npm run brand`, then check `artifacts/brand-tokens.json` evidence counts |

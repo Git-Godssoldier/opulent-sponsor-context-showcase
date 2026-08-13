@@ -52,6 +52,15 @@ Six named zones, names verbatim: **Astral Stage** ("main stage centerpiece with 
 
 This is a rate card, not availability. Which tiers remain open, and which of the three in-motion sponsors holds what, was never supplied — a pitch may name a tier and its range, and may not imply the tier is available.
 
+## The key art — slides 1, 2, and 5
+
+The cover art (deck media `image3.png`, full-bleed variant `image1.png`/`image4.png`) carries claims that appear nowhere in the slide text, read visually from the checksummed copies:
+
+- **"CELEBRATING 10 YEARS OF DOWNRIGHT ENTERTAINMENT"** — the promoter is Downright Entertainment, and this festival is presented under their tenth year. The festival is a first edition; the promoter is not. This is the deck's honest answer to the first-edition objection, and the one fact worth carrying into outreach in the sender's own words.
+- **"ASTRAL VALLEY ART PARK IN FRENCH VILLAGE, MO — 45 MINUTES FROM STL"** — the venue's locality, more precise than the email thread's "south of St. Louis."
+- Dates styled "SEPTEMBER 24TH–26TH", matching the email thread.
+- The visual identity: black night field, white bubble display type with a yellow offset, purple tree and magenta detail, orange autumn leaves, an owl mascot. The extracted tokens in `artifacts/brand-tokens.json` are the machine's read of the same identity from the slide XML.
+
 ## Contact and dates — slide 9
 
 `www.nocturnalvalley.com` · "Partnership opportunities available for 2026." · Closing line: "LET'S BUILD SOMETHING IMMERSIVE."

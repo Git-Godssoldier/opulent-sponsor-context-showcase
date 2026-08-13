@@ -20,6 +20,8 @@
  * flattery, which is how a cold pitch identifies itself as automated in its first line.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
 const arg = (name, dflt) => {
@@ -30,6 +32,19 @@ const read = async (p) => JSON.parse(await readFile(resolve(p), "utf8"));
 
 const dossier = await read(arg("dossier", "artifacts/dossier.json"));
 const festival = await read(arg("festival", "fixtures/festival-packet.json"));
+
+// Campaign brand tokens: extracted once per campaign from the client's own deck.
+// Missing tokens are generated on the spot so the first render is already branded;
+// re-run `npm run brand` after a deck revision or to merge a site styleguide.
+let brand = null;
+if (!existsSync(resolve("artifacts/brand-tokens.json"))) {
+  try {
+    execFileSync("node", [resolve(import.meta.dirname, "extract_brand.mjs")], { stdio: "pipe" });
+  } catch { /* the neutral scheme is the honest fallback */ }
+}
+if (existsSync(resolve("artifacts/brand-tokens.json"))) {
+  brand = await read("artifacts/brand-tokens.json");
+}
 
 /** "2026-09-24","2026-09-26" -> "September 24 to 26, 2026" — a reader's date, not a log's. */
 function humanDates(startIso, endIso) {
@@ -99,10 +114,14 @@ const props = {
   senderCompany: festival.sender?.company ?? null,
   optOutUrl: dossier.outreach?.opt_out_url ?? "",
   previewText: dossier.outreach?.preview_text ?? null,
+  brand,
 };
 
 const missing = ["recipientFirstName", "companyName", "festivalName", "personalNote", "callUrl", "previewText"]
   .filter((k) => !props[k]);
+console.log(brand
+  ? `brand: ${brand.source?.file ?? brand.source?.kind ?? "tokens"} · accent ${brand.palette?.accent ?? "—"} · display ${brand.type?.display ?? "—"}`
+  : "brand: neutral default (no campaign tokens; run npm run brand)");
 if (missing.length) {
   console.error(`Cannot render: ${missing.join(", ")} not populated.`);
   if (missing.includes("recipientFirstName")) {
@@ -128,7 +147,8 @@ const text = await render(el, { plainText: true });
 await writeFile(resolve("artifacts/pitch.html"), html);
 await writeFile(resolve("artifacts/pitch.txt"), text);
 await writeFile(resolve("artifacts/pitch.props.json"),
-  JSON.stringify({ props, subject: dossier.outreach?.subject ?? null,
+  JSON.stringify({ props: { ...props, brand: undefined }, brand_source: brand?.source ?? "neutral_default",
+                   subject: dossier.outreach?.subject ?? null,
                    review_state: "hold",
                    send_state: "draft_only_not_sent",
                    sender_authority: festival.sender?.authority_state ?? "unconfirmed",

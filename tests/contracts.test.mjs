@@ -69,6 +69,19 @@ test("the rate card is supplied with slide citations; availability is not", () =
   assert.equal(festival.packages.inventory_state, "unsupplied");
 });
 
+/* ---------------- brand extraction ---------------- */
+
+test("brand tokens come from the deck's own slide evidence", () => {
+  const dir = mkdtempSync(join(tmpdir(), "brand-"));
+  run(resolve("scripts/extract_brand.mjs"),
+    ["--deck", resolve("knowledge/sources/nocturnal-valley-deck-draft-2.pptx")], { cwd: dir });
+  const tokens = JSON.parse(readFileSync(join(dir, "artifacts/brand-tokens.json"), "utf8"));
+  assert.equal(tokens.palette.accent, "#5B2D8E");   // the deck's dominant saturated color
+  assert.equal(tokens.palette.accent2, "#C15A27");  // next saturated color at a distinct hue
+  assert.equal(tokens.type.display, "Cubano");
+  assert.ok(tokens.evidence.color_counts["5B2D8E"] >= 30, "evidence counts travel with the choice");
+});
+
 /* ---------------- the voice lint ---------------- */
 
 function lintPitch(text, subject, preview) {

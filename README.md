@@ -62,7 +62,7 @@ fixtures/
 templates/
   sponsor-dossier.template.json   one target: ten required fields + six extension blocks
   packet.template.json            the run: scope, festival, ledger, health, open gates
-  sponsor-pitch.mjs               React Email, zero-build ESM: node renders it directly
+  sponsor-pitch.mjs               React Email, zero-build ESM, brand-token driven
 references/
   contextdev-capabilities.md      every provider call, its credit cost, when to reach for it
   sponsor-dossier-contract.md     the field envelope and the rules the validator enforces
@@ -76,6 +76,7 @@ scripts/
   scrape_signal.mjs               the activation brief, and its check
   assemble.mjs                    receipts + signal + packet -> dossier and packet
   render_email.mjs                the pitch, behind two refusing gates
+  extract_brand.mjs               deck (+ optional site styleguide) -> brand tokens
   lint_pitch.mjs                  voice lint; npm run email chains it
   validate_packet.mjs             enforces the dossier contract
 dashboard/                        Next.js app; reads the packet, renders its empty states

@@ -14,7 +14,9 @@
     "market": "St. Louis, Missouri",
     "distance_note": "About 45 minutes south of St. Louis",
     "source": "client_sample_outreach",
-    "state": "supplied"
+    "state": "supplied",
+    "locality": "French Village, MO",
+    "locality_source": "deck_key_art"
   },
   "format": {
     "stages": [
@@ -160,5 +162,12 @@
     "knowledge/sources/nocturnal-valley-deck-draft-2.pptx (9 slides)",
     "Client sample cold outreach, 2026-08-11 (reconstructed in knowledge/voice/voice-profile.md)",
     "Client target list of 25 companies, 2026-08-11"
-  ]
+  ],
+  "promoter": {
+    "name": "Downright Entertainment",
+    "claim": "Celebrating 10 years",
+    "source": "deck_key_art_slides_1_2_5",
+    "state": "supplied",
+    "note": "The festival is a first edition; the promoter is not. Usable in outreach in the sender's own words."
+  }
 }
