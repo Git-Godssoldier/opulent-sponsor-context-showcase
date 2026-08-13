@@ -13,16 +13,11 @@ A company name and a bare domain go in. The run validates the entity before spen
 ## Run it
 
 ```bash
-npm run targets                                            # gate the client list (+ discovered rows)
-npm run discover -- --list                                 # net-new: harvest comparable events' sponsors
-npm run calls -- --domain <bare-domain> --company <name>   # the full provider plan
-npm run signal -- --url <activation-page>                  # one dated activation, read in a browser
-npm run brand                                              # campaign identity from the deck
-npm run assemble -- --target <id>                          # dossier + packet; judgement survives re-runs
-npm run email                                              # React Email pitch, draft only, voice-linted
-npm run validate                                           # the full-gather contract
-npm run dashboard && npm run dashboard:serve               # build returns; serve reads the packet live
-npm test                                                   # contract tests
+npm run research -- --target <id>    # gate + 12 concurrent calls + deck read + assemble
+#   fill artifacts/signal.json, write judgement into artifacts/dossier.json
+npm run deliver                      # assemble + draft + lint + attach + validate
+npm run discover -- --list           # net-new sponsors, before you have a target
+npm test                             # contract tests
 ```
 
 Retrieval needs `CONTEXT_DEV_API_KEY` server-side. Without it the run still validates, plans, and prices — and reports the retrieval stage as `blocked_missing_credentials` rather than substituting for it.
@@ -83,6 +78,8 @@ scripts/
   scrape_signal.mjs               the activation brief, and its check
   assemble.mjs                    receipts + signal + packet -> dossier and packet
   discover_sponsors.mjs           net-new harvest from comparable events' sponsor pages
+  research.mjs                    one command: gate, calls, brand, first assemble
+  deliver.mjs                     one command: assemble, draft, lint, attach, validate
   render_email.mjs                the pitch, behind two refusing gates
   extract_brand.mjs               deck (+ optional site styleguide) -> brand tokens
   lint_pitch.mjs                  voice lint; npm run email chains it

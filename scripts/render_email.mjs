@@ -174,11 +174,17 @@ updated.outreach = { ...updated.outreach,
   send_state: "draft_only_not_sent",
 };
 await writeFile(dossierPath, JSON.stringify(updated, null, 2) + "\n");
-try {
-  execFileSync("node", [resolve(import.meta.dirname, "assemble.mjs")], { stdio: "pipe" });
-  console.log("packet refreshed: draft attached to sponsors[0] and messages[]");
-} catch (err) {
-  console.error(`packet refresh failed: ${err.message} — run npm run assemble by hand`);
+// deliver.mjs re-assembles once after this step, so a nested assemble here would be
+// the third build of the same packet in one run. Standalone, this still self-heals.
+if (process.env.ORCHESTRATED === "1") {
+  console.log("draft paths written to the dossier; deliver will attach them");
+} else {
+  try {
+    execFileSync("node", [resolve(import.meta.dirname, "assemble.mjs")], { stdio: "pipe" });
+    console.log("packet refreshed: draft attached to sponsors[0] and messages[]");
+  } catch (err) {
+    console.error(`packet refresh failed: ${err.message} — run npm run assemble by hand`);
+  }
 }
 
 console.log(`artifacts/pitch.html  ${html.length} bytes`);

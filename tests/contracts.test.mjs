@@ -394,3 +394,28 @@ test("emit skips a company already on the client list", () => {
   const out = run(DISCOVER, ["--emit", "evolution-stl"], { cwd: dir });
   assert.match(out, /\+0 row\(s\), 1 skipped/);
 });
+
+/* ---------------- consolidation and concurrency ---------------- */
+
+test("the call plan runs concurrently, not one at a time", async () => {
+  const src = await readFile(resolve("scripts/run_calls.mjs"), "utf8");
+  // A fixed worker pool, not a for-await over the plan: twelve cold round-trips in
+  // series was the largest block of wall clock in the workflow.
+  assert.match(src, /Promise\.all\(Array\.from\(\{ length: Math\.min\(CONCURRENCY/);
+  assert.ok(!/for \(const c of calls\) \{\s*\n\s*const url/.test(src), "the sequential loop is gone");
+  assert.match(src, /wall_ms/, "the summary records wall clock against serial");
+});
+
+test("the critical path is two commands", async () => {
+  const pkg = JSON.parse(await readFile(resolve("package.json"), "utf8"));
+  assert.equal(pkg.scripts.research, "node scripts/research.mjs");
+  assert.equal(pkg.scripts.deliver, "node scripts/deliver.mjs");
+  // The dashboard build stays off deliver's default path: it is a review surface,
+  // and a Next build costs more wall clock than every other stage combined.
+  assert.ok(!pkg.scripts.deliver.includes("dashboard"));
+});
+
+test("render_email does not re-assemble when an orchestrator is driving", async () => {
+  const src = await readFile(resolve("scripts/render_email.mjs"), "utf8");
+  assert.match(src, /process\.env\.ORCHESTRATED === "1"/);
+});

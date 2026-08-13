@@ -8,20 +8,17 @@ license: MIT
 
 The skill is **Trifecta Marketing's** — Bob Dittrich's agency, selling sponsorship packages for ten to fifteen independent festivals. A campaign is one property being sold, held as data under `campaigns/<key>/`; Nocturnal Valley is the sample campaign, not the identity. One campaign present runs by default; several need `--campaign <key>`.
 
-Eight commands, in order.
+Two commands and one judgement pass between them.
 
 ```bash
-npm run targets                                            # 1
-npm run discover -- --list                                 # 1b, net-new sponsors
-npm run calls -- --domain <bare-domain> --company <name>   # 2
-npm run signal -- --url <activation-page-url>              # 3
-npm run signal -- --check                                  # 3, after filling the brief
-npm run brand                                              # 4
-npm run assemble -- --target <id>                          # 5, then write the judgement
-npm run email                                              # 6
-npm run validate                                           # 7
-npm run dashboard && npm run dashboard:serve               # 8
+npm run research -- --target <id> [--linkedin-url <url>]   # gate, call, brand, assemble
+#   read the activation page · fill artifacts/signal.json · write judgement into artifacts/dossier.json
+npm run deliver                                            # assemble, draft, lint, validate
 ```
+
+`research` runs the target gate, the twelve provider calls, and the deck read concurrently, then assembles a first dossier. `deliver` folds in your judgement, renders the draft, lints it, attaches it, and checks the whole packet. Neither exceeds a few seconds of local work; the provider calls are the only real wait.
+
+Off the critical path: `npm run discover` finds net-new sponsors before you have a target, and `npm run deliver -- --dashboard` builds the review page. Every stage also runs alone — `targets`, `calls`, `signal`, `brand`, `assemble`, `email`, `validate` — for debugging one step without re-running the rest.
 
 ## Invariants
 
@@ -33,133 +30,64 @@ npm run dashboard && npm run dashboard:serve               # 8
 - **No attendance figure appears in any draft.** The client's two figures do not reconcile, and neither deck states one.
 - **A blocked target never reaches a draft**, whichever gate blocked it.
 - **A greeting name comes only from a retrieved profile.** Without one the draft opens to the company's sponsorship team. A name is never invented, borrowed, or guessed.
-- Outreach prose starts from the knowledge base: read `knowledge/agency/trifecta-profile.md` (the sender's register) and the campaign's `deck-facts.md` before writing any reason, subject, preview, or body. A property fact outside the campaign's `deck-facts.md` or the dossier is not written.
+- Outreach prose starts from `knowledge/agency/trifecta-profile.md` (the sender's register) and the campaign's `deck-facts.md`. A property fact outside those or the dossier is not written.
 - The pitch is a draft. Sender authority is unconfirmed.
 
-## 1 · Targets
-
-Loads the campaign's `targets.csv` — for Nocturnal Valley, the promoter's original 25 plus the researched spirits rows — and applies three gates.
-
-Compliance first: cannabis rows are admitted for research and marked undraftable, per the client's own email. Client-decision holds second: a row the client must resolve before any pitch (NUTRL, held until the Anheuser-Busch entry point is picked) is admitted and marked the same way. Identity last: a row without an exact bare domain is rejected, never resolved by search. Two rows ship as rejected on purpose — Volcán X.A and Cîroc are leads awaiting a client-confirmed domain, and their notes say so.
-
-Every accepted row carries `unverified_against_rule`, because the three sponsors already in motion were never named. That flag stays until the client names them.
-
-The loader folds `artifacts/discovered.csv` in automatically when step 1b has produced one, tagging each row's `origin` — a discovered target rides exactly the same gates.
-
-Pick one accepted, `draft_gate: open` row.
-
-*Done: subject chosen; row, draftable, discovered, and lead counts echoed; the `unverified_against_rule` flag named in the report.*
-
-## 1b · Discover net-new
-
-The client's list came from a category brainstorm, which produces names with no evidence. Discovery inverts that: harvest the sponsor lists of comparable events, where every company arrives having already bought what this festival sells, with a dated, quotable activation attached by construction.
-
-The universe lives in the campaign's `comparable-events.json`, tiered by the deck's own ICP — same format and region first (Electric Forest, North Coast, ARC, Summer Camp), then the same market (Evolution's 2026 pause left every 2025 St. Louis sponsor with a freed budget; Music at the Intersection), then national EDM properties dated inside 2026 (EDC in May, Coachella's spirits row in April, Ultra, Lollapalooza), and above all of them any prior event at Astral Valley Art Park itself.
+## 1 · Research
 
 ```bash
-npm run discover -- --list                  # the universe, by tier
-npm run discover -- --event <key>           # open a harvest brief
-npm run discover -- --check <key>           # validate it
-npm run discover -- --emit <key>            # append clean rows to artifacts/discovered.csv
+npm run research -- --target <id>
 ```
 
-Read the sponsor page in a browser session and fill the brief: one entry per sponsor, with the page's verbatim wording, the edition date, and the URL. Confirm each company's domain on its own site and record the confirmation URL; an ambiguous name stays domainless with the ambiguity noted, and the identity gate holds it. `--emit` refuses an invalid harvest and skips duplicates against the client list.
+**The gate.** Three rules, in order: compliance (cannabis rows are admitted for research and marked undraftable, per the client's own email), client-decision holds (NUTRL, until the Anheuser-Busch entry point is picked), then identity (no exact bare domain, no entry). Volcán X.A and Cîroc ship rejected on purpose — they are leads awaiting a client-confirmed domain. `artifacts/discovered.csv` folds in automatically when step 1b has produced one. Every accepted row carries `unverified_against_rule` until the client names the three sponsors already in motion.
 
-Work tiers in order and stop when the draftable pool covers the ask — the client needs roughly seven net-new sponsors, not a census.
+**The calls.** Twelve, concurrent, six at a time. Parameter shapes are fixed in `scripts/run_calls.mjs` — `/web/naics` and `/web/sic` take `input`, the three brand-asset endpoints take `domain` XOR `directUrl`, and `/utility/prefetch` is paid-plan only and excluded. Pass `--linkedin-url` only when the client supplied an exact profile URL; without it the decision-maker call is omitted rather than guessed. No API key records every call `blocked_missing_credentials` and **exits 0**, because that record is the report. The plan is 90 credits, 110 with the decision maker; the summary states the budget and reconciles it against spend.
 
-Monid is the second discovery surface when the browser harvest runs dry: `monid discover -q "festival sponsor list"`, inspect, run, and log receipts per `references/monid-capabilities.md`. Keyless it records `blocked_missing_credentials` and the run continues.
+**The brand.** The campaign deck's palette and type, ranked from slide evidence that travels with the tokens. Runs alongside the calls, since neither waits on the other.
 
-*Done: harvests checked and emitted; `npm run targets` re-run showing the discovered count.*
+*Done: cohort counts echoed, every call terminal, tokens written, first dossier assembled.*
 
-## 2 · Calls
+## 2 · The judgement pass
 
-Runs the full plan, writes `artifacts/calls-summary.json` and one receipt per call. Multi-word company names are safe through npm: `--company Sun Cruiser` arrives as one name.
+One pass over two files, then straight to `deliver`.
 
-Parameter shapes differ per endpoint and are already correct in `scripts/run_calls.mjs`. Do not hand-build requests.
+**`artifacts/signal.json`** — read one page showing this company sponsoring, activating at, or sampling into an event, and fill the brief. Some sponsor lists render client-side, so read them in a browser session rather than a raw fetch. `reason_eligible` needs a date **and** a verbatim quote. Undated is not a signal: it cannot tell you whether the budget is live now or was live in 2019, which is the entire reason to open on it.
 
-- `/web/naics`, `/web/sic` → `input`
-- `/web/styleguide`, `/web/fonts`, `/web/screenshot` → `domain` XOR `directUrl`
-- `/utility/prefetch` → paid plan only, 403 otherwise, excluded from the plan
+**`artifacts/dossier.json`** — read `knowledge/agency/trifecta-profile.md` and the campaign's `deck-facts.md` first, then write:
 
-Pass `--linkedin-url` only when the client supplied an exact profile URL. Without it the decision-maker call is omitted rather than guessed, and the draft will greet the company's team instead of a person.
-
-No API key → every call is recorded `blocked_missing_credentials` and the command **exits 0**; that record is the report, and the run continues. Non-200 on a live call is a finding; record and move on.
-
-The plan costs 90 credits per target, 110 with the decision-maker call. The budget is stated in the summary before the run and reconciled against `credits_spent` after.
-
-Where the plan cannot answer — a gated decision maker, audience overlap, activation scale — Monid gap-fills through its own loop and ledger (`references/monid-capabilities.md`). One provider per fact; the fixed plan first.
-
-*Done: summary written, every call terminal, spend reconciled against the 90/110 plan.*
-
-## 3 · Signal
-
-Find one page showing this company sponsoring, activating at, or sampling into an event. A newsroom post, a festival's sponsor page, a case study. Some sponsor pages render their lists client-side — read them in a browser session, not a raw fetch.
-
-Capture type, summary, a verbatim quote, the date, the event named, the activation form, any scale claim, and any competitor conflict visible on the page. Set `reason_eligible` only when the signal is dated **and** quoted. Then `npm run signal -- --check`.
-
-Undated is not a signal. A sponsorship with no date cannot tell you whether the budget is live now or was live in 2019, and that difference is the entire reason to open on it.
-
-*Done: `artifacts/signal.json` filled and `--check` passes.*
-
-## 4 · Brand
-
-Extracts the campaign's visual identity into `artifacts/brand-tokens.json`: palette and type from the deck in the campaign's `sources/`, ranked from slide-XML evidence counts that travel with the tokens. With a key, `-- --domain <event-domain>` merges the event site's styleguide; the deck stays primary.
-
-The template is the sender's stationery and carries no event brand of its own. A new campaign is a new deck plus a re-run of this step, never a template edit.
-
-*Done: tokens written; accent and display face match the deck by eye.*
-
-## 5 · Assemble, then write the judgement
-
-`npm run assemble -- --target <id>` builds `artifacts/dossier.json` and derives `artifacts/packet.json` from it.
-
-Every field: `value`, `state`, `confidence`, `source`, `source_url`, `observed_at`. All ten required fields appear regardless of outcome. Client-supplied facts assemble as `Estimated`, never `Verified` — `Verified` is reserved for retrieved records. No verification provider is wired, so `contact_route` is `unknown` with that reason.
-
-**Re-running assemble is safe**: the authored `fit` and `outreach` blocks in an existing dossier survive, and the packet is re-derived from the merged result. `--fresh` discards them deliberately.
-
-Then write the judgement into `artifacts/dossier.json` — read `knowledge/agency/trifecta-profile.md` and the campaign's `deck-facts.md` first — and re-run assemble so the packet carries it:
-
-- `fit.band` and `fit.rationale`, with `fit.counter_evidence`. The validator enforces the band's evidence rules from `references/sponsor-fit-and-outreach.md`: claim only what the fields support.
+- `fit.band` with `rationale` and `counter_evidence`. The validator enforces the band's evidence rules; claim only what the fields support.
 - `outreach.reason_to_engage` with `reason_source_url` — one dated reason, at the evidence's strength.
 - `outreach.personal_note` — the sender's register; the reason is its floor.
 - `outreach.package_named` — a rate-card tier verbatim, or empty. Availability is never implied.
 - `outreach.subject` and `preview_text`, written last, together.
 
-*Done: ten fields present, judgement written, re-assemble run, packet's sponsor carries the fit band.*
+Re-running `research` or `deliver` preserves both blocks; `--fresh` on assemble discards them deliberately.
 
-## 6 · Email
+*Done: signal eligible, judgement written.*
 
-Renders `templates/sponsor-pitch.mjs` to `artifacts/pitch.html` and `.txt` — React Email as zero-build ESM, so `node` renders it with no compile step. The sender block comes from `knowledge/agency/sender.json`; the property block from the campaign packet.
+## 3 · Deliver
 
-Refuses before rendering: any `blocked_*` target, a reason without a dated activation, an unwritten subject. Greeting: the retrieved decision-maker's first name, or `<Company> team` when none was retrieved.
+```bash
+npm run deliver
+```
 
-Props come from the dossier and the festival packet. A prop without evidence is omitted; its section does not render. Body order: personal note → event block → the offer sheet (the deck's rate card, the named tier highlighted) → one action, signed Robert Dittrich. `outreach.hero_image_url` adds hosted campaign art when the operator supplies it.
+Assembles the filled signal, renders `templates/sponsor-pitch.mjs` (React Email as zero-build ESM, no compile step), lints the prose, attaches the draft to the packet, and runs the full contract.
 
-After rendering, the draft paths are written into the dossier and the packet is re-derived, so the draft is part of the run's record. `npm run email` then lints the pitch; exit 1 is a finding — rewrite the pitch, never the linter.
+The draft refuses on any `blocked_*` target, a reason without a dated activation, or an unwritten subject — exit 4, and nothing downstream runs. Body order: personal note → event block → the deck's rate card with the named tier highlighted → one action, signed from `knowledge/agency/sender.json`. The lint checks banned phrases, em dashes, attendance-shaped numbers, tier fidelity, and the single ask; exit 1 is a finding, so rewrite the pitch, never the linter.
 
-*Done: both files render, lint exits 0, packet's `messages[]` carries the draft.*
+Validation is the full gather: every required field present, `Verified` carrying a source URL, no negative without dated evidence, no draft on a blocked target, no package outside the rate card, no disputed attendance figure in a message, no secret in the packet — and, for an open target, written judgement with its evidence and a rendered draft on disk. `--partial` checks structure only, mid-run.
 
-## 7 · Validate
+*Done: lint 0, validate 0 in full mode, draft in `packet.messages[]`.*
 
-The full-gather contract. Exits non-zero on: missing required field, `Verified` without a source URL, a negative without dated evidence, `executed` without a receipt, a draft or subject on any blocked target, a package that is not a rate-card tier, a disputed attendance figure inside a message, a secret in the packet — **and, for an open target: unwritten fit band or rationale, a `strong`/`plausible` band without its required evidence or counter-evidence, missing reason/subject/preview, or no rendered draft on disk.**
+## Discover net-new
 
-`--partial` checks structure only, for mid-run use. Step 7 runs the full contract.
+```bash
+npm run discover -- --list | --event <key> | --check <key> | --emit <key>
+```
 
-*Done: exit 0 in full mode.*
+The client's list came from a category brainstorm, which produces names with no evidence. Discovery inverts that: harvest the sponsor lists of comparable events, where every company arrives having already bought what this festival sells, with a dated activation attached by construction. The universe is the campaign's `comparable-events.json`, tiered by the deck's own ICP — same format and region first, then the same market, then national properties dated inside 2026, and above all of them any prior event at the venue itself. `--emit` refuses an invalid harvest, skips duplicates, and writes rows the target gate then treats exactly like the client's own.
 
-## 8 · Dashboard
-
-`npm run dashboard` builds and returns. `npm run dashboard:serve` serves it; the page reads `artifacts/packet.json` **per request**, so a later run shows up on refresh without a rebuild.
-
-Confirm the sponsor card with its fit band, refused rows, open gates, withheld attendance claims, drafted outreach, and the operation ledger render. Capture the view.
-
-Decision layer first, audit layer beneath it. `proposed`, `blocked`, and `failed` are never styled as verified. The open gates are shown, not hidden — they are the honest half of the demo.
-
-*Done: build clean, served view captured with the draft visible.*
-
-## Report
-
-Capabilities run, capabilities skipped with reasons, credits planned against spent, unknowns, and the open gates — the missing inputs that block a step, each naming what would resolve it.
+Monid is the second surface when the browser harvest runs dry (`references/monid-capabilities.md`).
 
 ## References
 
@@ -167,7 +95,6 @@ Open on trigger.
 
 | Trigger | File |
 | --- | --- |
-| Hunting net-new sponsors | the campaign's `comparable-events.json` via `npm run discover -- --list` |
 | Any outreach prose | `knowledge/agency/trifecta-profile.md` |
 | The deck's vocabulary and register line | the campaign's `deck-register.md` |
 | Citing a property fact, naming a tier | the campaign's `deck-facts.md` |
@@ -175,7 +102,7 @@ Open on trigger.
 | Building the pitch | `references/sponsor-fit-and-outreach.md` |
 | Field shape unclear | `references/sponsor-dossier-contract.md` |
 | Adding a provider call | `references/contextdev-capabilities.md` |
-| Monid discovery or gap-fill enrichment | `references/monid-capabilities.md` |
+| Monid discovery or gap-fill | `references/monid-capabilities.md` |
 | Changing the dashboard | `references/dashboard-brief.md` |
 | Claim boundary unclear | `references/evidence-policy.md` |
 
@@ -183,11 +110,10 @@ Open on trigger.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Step 6 exits 4 on a good target | No dated activation read, or a gate | Run step 3 against a real page; a gate clears only when the client answers it |
-| Draft greets "team" instead of a name | No decision-maker URL supplied | Ask the client for the exact profile URL; never invent a name |
-| Every target rejected at step 1 | Domain column empty | The client supplies domains; the skill never resolves them |
-| Validate fails on unwritten judgement | Step 5's authoring half skipped | Write fit and outreach into the dossier, re-run assemble |
-| Validator flags a package | Named something outside the rate card | Name a tier verbatim from the campaign's `deck-facts.md`, or nothing |
-| `lint_pitch` exits 1 | Deck register or an unsourced number leaked into the email | Rewrite in the sender's register; facts from the campaign's `deck-facts.md` only |
-| Pitch renders in the neutral scheme | No campaign tokens | `npm run brand`, then check the evidence counts in `artifacts/brand-tokens.json` |
-| Dashboard shows an old run | Serving a stale process | The page reads per request; refresh, or restart `dashboard:serve` |
+| `deliver` exits 4 | No dated activation, or a gate | Fill the signal against a real page; a gate clears only when the client answers it |
+| Draft greets "team" | No decision-maker URL supplied | Ask the client for the exact profile URL; never invent a name |
+| `research` exits 2 on the target | Id not draftable | It prints the draftable ids; pick one |
+| Validate fails on unwritten judgement | The judgement pass was skipped | Write fit and outreach into the dossier, re-run `deliver` |
+| `lint_pitch` exits 1 | Deck register or an unsourced number in the email | Rewrite in the sender's register; facts from `deck-facts.md` only |
+| Pitch renders neutral | No campaign tokens | `npm run brand`, then check the evidence counts in the tokens |
+| Calls slow to a crawl | Provider rate limits | Lower `CALL_CONCURRENCY` (default 6); the retry path absorbs one 429 per call |

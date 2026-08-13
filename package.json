@@ -4,18 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "research": "node scripts/research.mjs",
+    "deliver": "node scripts/deliver.mjs",
+    "discover": "node scripts/discover_sponsors.mjs",
+    "dashboard": "npm --prefix dashboard run build",
+    "dashboard:serve": "npm --prefix dashboard run start",
+    "test": "node --test tests/*.test.mjs",
     "targets": "node scripts/load_targets.mjs --out artifacts/cohort.json",
     "calls": "node scripts/run_calls.mjs",
     "signal": "node scripts/scrape_signal.mjs",
+    "brand": "node scripts/extract_brand.mjs",
     "assemble": "node scripts/assemble.mjs",
     "email": "node scripts/render_email.mjs && node scripts/lint_pitch.mjs",
     "validate": "node scripts/validate_packet.mjs artifacts/packet.json",
-    "dashboard": "npm --prefix dashboard run build",
-    "test": "node --test tests/*.test.mjs",
-    "lint:pitch": "node scripts/lint_pitch.mjs",
-    "brand": "node scripts/extract_brand.mjs",
-    "dashboard:serve": "npm --prefix dashboard run start",
-    "discover": "node scripts/discover_sponsors.mjs"
+    "lint:pitch": "node scripts/lint_pitch.mjs"
   },
   "engines": {
     "node": ">=20"

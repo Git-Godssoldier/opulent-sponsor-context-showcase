@@ -121,13 +121,20 @@ if (a.dryRun || !key) {
   process.exit(0);
 }
 
-const summary = [];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // One retry on 408/429/5xx, honouring Retry-After, capped at 30s. Everything else is
 // terminal on first sight: a 4xx is a fact about the request, and the plan records it.
 const RETRYABLE = (s) => s === 408 || s === 429 || s >= 500;
 
-for (const c of calls) {
+/**
+ * The twelve calls are independent of one another, so they run concurrently.
+ * Sequential, this stage was twelve cold round-trips end to end — the single largest
+ * block of wall clock in the whole workflow, and none of it was work. Concurrency is
+ * capped so a burst does not manufacture the 429s the retry path then has to absorb.
+ */
+const CONCURRENCY = Number(process.env.CALL_CONCURRENCY ?? 6);
+
+async function runCall(c) {
   const url = new URL(BASE + c.path);
   for (const [k, v] of Object.entries(c.query ?? {})) url.searchParams.set(k, String(v));
   const started = Date.now();
@@ -150,9 +157,8 @@ for (const c of calls) {
       break;
     }
   } catch (err) {
-    summary.push({ ...c, status: "failed", http_status: null, error: err.message, receipt: null });
     console.log(`  ${c.id.padEnd(20)} FAILED  ${err.message}`);
-    continue;
+    return { ...c, status: "failed", http_status: null, error: err.message, receipt: null };
   }
   let parsed = null;
   try { parsed = JSON.parse(bodyText); } catch { /* keep the text */ }
@@ -171,18 +177,35 @@ for (const c of calls) {
   }, null, 2) + "\n");
 
   const credits = parsed?.key_metadata?.credits_consumed ?? null;
-  summary.push({
+  console.log(`  ${c.id.padEnd(20)} ${String(res.status).padEnd(4)} ${credits ?? "-"} cr  ${Date.now() - started}ms`);
+  return {
     id: c.id, capability: c.capability, method: c.method, endpoint: c.path,
     status: res.ok ? "executed" : "failed",
     http_status: res.status, credits, latency_ms: Date.now() - started, receipt,
-  });
-  console.log(`  ${c.id.padEnd(20)} ${String(res.status).padEnd(4)} ${credits ?? "-"} cr  ${receipt}`);
+  };
 }
 
+// A fixed pool: each worker pulls the next index, so a slow call never blocks a free slot.
+const wallStart = Date.now();
+const summary = new Array(calls.length);
+let next = 0;
+await Promise.all(Array.from({ length: Math.min(CONCURRENCY, calls.length) }, async () => {
+  for (;;) {
+    const i = next++;
+    if (i >= calls.length) return;
+    summary[i] = await runCall(calls[i]);
+  }
+}));
+
 const spent = summary.reduce((n, s) => n + (Number(s.credits) || 0), 0);
+const wallMs = Date.now() - wallStart;
+const serialMs = summary.reduce((n, s) => n + (s.latency_ms || 0), 0);
 await writeFile(resolve(OUT, "calls-summary.json"),
   JSON.stringify({ status: "complete", subject: { domain: a.domain, company: a.company },
                    executed: summary.filter((s) => s.status === "executed").length,
                    failed: summary.filter((s) => s.status !== "executed").length,
-                   planned_credits: plannedCredits, credits_spent: spent, calls: summary }, null, 2) + "\n");
+                   planned_credits: plannedCredits, credits_spent: spent,
+                   wall_ms: wallMs, serial_ms: serialMs, concurrency: CONCURRENCY,
+                   calls: summary }, null, 2) + "\n");
+console.log(`\n${(wallMs / 1000).toFixed(1)}s wall · ${(serialMs / 1000).toFixed(1)}s if run one at a time`);
 console.log(`\nexecuted ${summary.filter((s) => s.status === "executed").length}/${calls.length} · ${spent} credits · ${OUT}/calls-summary.json`);
