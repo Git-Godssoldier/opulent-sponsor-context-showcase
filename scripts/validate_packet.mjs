@@ -108,8 +108,13 @@ if (fest.attendance_state === "disputed") {
   check(!/\b(20,?000|7,?500|22,?500)\b/.test(serializedMessages),
     "a disputed attendance figure appears in a drafted message");
 }
-check(fest.inventory_state !== "unsupplied" || !(packet.messages ?? []).some((m) => m.package_named),
-  "a package was named while the sponsorship inventory is unsupplied");
+const tierNames = (fest.rate_card ?? []).map((t) => String(t.tier).toLowerCase());
+for (const m of packet.messages ?? []) {
+  if (m.package_named) {
+    check(tierNames.some((n) => String(m.package_named).toLowerCase().includes(n)),
+      `message names a package that is not a rate-card tier: ${m.package_named}`);
+  }
+}
 
 // ---- secrets ---------------------------------------------------------------
 const serialized = JSON.stringify(packet).toLowerCase();

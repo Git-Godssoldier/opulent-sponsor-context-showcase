@@ -17,8 +17,19 @@
     "state": "supplied"
   },
   "format": {
-    "stages": ["Astral", "Nocturnal", "Forest"],
-    "elements": ["multi-day camping", "VIP hospitality", "wellness", "art", "creator content", "product sampling"],
+    "stages": [
+      "Astral",
+      "Nocturnal",
+      "Forest"
+    ],
+    "elements": [
+      "multi-day camping",
+      "VIP hospitality",
+      "wellness",
+      "art",
+      "creator content",
+      "product sampling"
+    ],
     "source": "client_deck",
     "state": "supplied"
   },
@@ -28,7 +39,14 @@
     "household_income": "$60,000-$140,000",
     "gender_split": "55% male / 45% female",
     "region": "Midwest",
-    "interests": ["music", "travel", "wellness", "nightlife", "fashion", "social media"],
+    "interests": [
+      "music",
+      "travel",
+      "wellness",
+      "nightlife",
+      "fashion",
+      "social media"
+    ],
     "source": "client_deck",
     "state": "supplied"
   },
@@ -48,14 +66,68 @@
         "source_date": "2026-08-10"
       }
     ],
-    "reason": "Two client-supplied figures that do not reconcile, and they measure different things — total attendees against daily admissions. An inaugural festival has no gate history to settle it. No attendance number may appear in outreach until the client states one.",
+    "reason": "Two client-supplied figures that do not reconcile, and they measure different things \u2014 total attendees against daily admissions. An inaugural festival has no gate history to settle it. No attendance number may appear in outreach until the client states one.",
     "resolves_when": "Client confirms a single figure and says whether it counts unique attendees or daily admissions."
   },
   "packages": {
     "range": "$10,000 to more than $100,000",
+    "rate_card_state": "supplied",
+    "rate_card": [
+      {
+        "tier": "Presenting Sponsor",
+        "range": "$100K+",
+        "includes": [
+          "Festival naming rights",
+          "Multi-stage integration",
+          "VIP experience access",
+          "Full content package",
+          "Maximum brand visibility"
+        ],
+        "source": "deck_draft_2_slide_7"
+      },
+      {
+        "tier": "Stage Sponsor",
+        "range": "$35K-$75K",
+        "includes": [
+          "Stage naming rights",
+          "On-stage activation",
+          "LED screen branding",
+          "Stage-area signage"
+        ],
+        "source": "deck_draft_2_slide_7"
+      },
+      {
+        "tier": "VIP Sponsor",
+        "range": "$20K-$50K",
+        "includes": [
+          "Hospitality integration",
+          "VIP lounge branding",
+          "Premium bar access",
+          "Guest experience perks"
+        ],
+        "source": "deck_draft_2_slide_7"
+      },
+      {
+        "tier": "Content Partner",
+        "range": "$15K-$40K",
+        "includes": [
+          "Social media integration",
+          "Creator programming"
+        ],
+        "source": "deck_draft_2_slide_7"
+      },
+      {
+        "tier": "Sampling Partner",
+        "range": "$10K-$25K",
+        "includes": [
+          "Multi-day product sampling"
+        ],
+        "source": "deck_draft_2_slide_7"
+      }
+    ],
     "inventory": null,
     "inventory_state": "unsupplied",
-    "inventory_reason": "Sponsorship inventory was named as a required input and never delivered. Without it a draft cannot name what a sponsor actually receives.",
+    "inventory_reason": "The rate card is the deck's own, slide 7. Which tiers remain open, and what the three in-motion sponsors hold, was never supplied. A pitch may name a tier and its published range; availability is never implied.",
     "source": "client_deck",
     "state": "partial"
   },
@@ -84,9 +156,9 @@
     "authority_reason": "The sending account and outreach permissions were never established. Every draft stays a draft until they are."
   },
   "source_materials": [
-    "Nocturnal_Valley_Sponsorship_Deck Draft.pdf (15 pages)",
-    "Nocturnal_Valley_Sponsorship_Deck Draft 2.pptx (9 slides)",
-    "Client sample cold outreach, 2026-08-11",
+    "knowledge/sources/nocturnal-valley-deck-draft-1.pdf (15 pages)",
+    "knowledge/sources/nocturnal-valley-deck-draft-2.pptx (9 slides)",
+    "Client sample cold outreach, 2026-08-11 (reconstructed in knowledge/voice/voice-profile.md)",
     "Client target list of 25 companies, 2026-08-11"
   ]
 }

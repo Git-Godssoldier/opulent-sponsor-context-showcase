@@ -30,6 +30,16 @@ const read = async (p) => JSON.parse(await readFile(resolve(p), "utf8"));
 
 const dossier = await read(arg("dossier", "artifacts/dossier.json"));
 const festival = await read(arg("festival", "fixtures/festival-packet.json"));
+
+/** "2026-09-24","2026-09-26" -> "September 24 to 26, 2026" — a reader's date, not a log's. */
+function humanDates(startIso, endIso) {
+  if (!startIso) return null;
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const [sy, sm, sd] = String(startIso).split("-").map(Number);
+  const [ey, em, ed] = String(endIso ?? startIso).split("-").map(Number);
+  if (sy === ey && sm === em) return `${months[sm - 1]} ${sd} to ${ed}, ${sy}`;
+  return `${months[sm - 1]} ${sd} to ${months[em - 1]} ${ed}, ${ey}`;
+}
 const f = (name) => dossier.required_fields?.[name]?.value ?? null;
 
 // ---- gate 1: compliance ----------------------------------------------------
@@ -58,22 +68,32 @@ if (dossier.required_fields?.activation_history?.state !== "retrieved") {
 // ---- props -----------------------------------------------------------------
 const firstName = String(f("decision_maker") ?? "").split(" ")[0] || null;
 
+// The highlighted tier must be the deck's own. Anything else is dropped, because
+// availability was never supplied and the sheet may state the rate card and no more.
+const rateCard = festival.packages?.rate_card ?? [];
+const named = dossier.outreach?.package_named ?? null;
+const highlightTier = named && rateCard.some((t) => named.toLowerCase().includes(t.tier.toLowerCase()))
+  ? rateCard.find((t) => named.toLowerCase().includes(t.tier.toLowerCase())).tier
+  : null;
+
 const props = {
   recipientFirstName: firstName,
   companyName: dossier.company ?? null,
+  // The personal note is authored in step 4, in the sender's register; the dated
+  // reason is its floor, not its ceiling.
+  personalNote: dossier.outreach?.personal_note ?? reason,
+  reasonSourceUrl: reasonUrl ?? undefined,
   festivalName: festival.event_name ?? null,
-  festivalDates: `${festival.dates?.start} to ${festival.dates?.end}`,
+  festivalDates: humanDates(festival.dates?.start, festival.dates?.end),
   festivalVenue: festival.venue?.name ?? null,
   festivalMarket: festival.venue?.market ?? null,
-  reason,
-  reasonSourceUrl: reasonUrl ?? undefined,
+  distanceNote: festival.venue?.distance_note ?? null,
+  stages: festival.format?.stages ?? [],
   audienceLine: festival.audience
     ? `Primary audience ${festival.audience.primary_age}, ${festival.audience.region}, household income ${festival.audience.household_income}.`
     : null,
-  // Omitted until the client supplies inventory. The template drops the section.
-  packageLine: festival.packages?.inventory_state === "unsupplied"
-    ? undefined
-    : dossier.outreach?.package_named ?? undefined,
+  offerSheet: rateCard,
+  highlightTier,
   callUrl: festival.sender?.calendly ?? null,
   senderName: festival.sender?.name ?? null,
   senderCompany: festival.sender?.company ?? null,
@@ -81,7 +101,7 @@ const props = {
   previewText: dossier.outreach?.preview_text ?? null,
 };
 
-const missing = ["recipientFirstName", "companyName", "festivalName", "reason", "callUrl", "previewText"]
+const missing = ["recipientFirstName", "companyName", "festivalName", "personalNote", "callUrl", "previewText"]
   .filter((k) => !props[k]);
 if (missing.length) {
   console.error(`Cannot render: ${missing.join(", ")} not populated.`);
@@ -91,16 +111,13 @@ if (missing.length) {
   process.exit(2);
 }
 
-let render;
+// Zero-build: the template is pure-ESM createElement, so node renders it directly.
+let render, SponsorPitch;
 try {
   ({ render } = await import("@react-email/render"));
-} catch {
-  console.error("@react-email/render is not installed. Run: npm i -D @react-email/render react react-dom");
-  process.exit(3);
-}
-const { default: SponsorPitch } = await import("../templates/sponsor-pitch.js").catch(() => ({}));
-if (!SponsorPitch) {
-  console.error("Compile templates/sponsor-pitch.tsx first (tsx/esbuild), then re-run.");
+  ({ default: SponsorPitch } = await import(new URL("../templates/sponsor-pitch.mjs", import.meta.url)));
+} catch (err) {
+  console.error(`Render dependencies missing (${err.message}). Run: npm install`);
   process.exit(3);
 }
 
@@ -124,6 +141,6 @@ console.log("review_state: hold · send_state: draft_only_not_sent");
 if (festival.attendance?.state === "disputed") {
   console.log("attendance: omitted — the two client figures do not reconcile");
 }
-if (festival.packages?.inventory_state === "unsupplied") {
-  console.log("package line: omitted — no sponsorship inventory supplied");
-}
+console.log(highlightTier
+  ? `offer sheet: full rate card, ${highlightTier} highlighted`
+  : "offer sheet: full rate card, no tier highlighted");

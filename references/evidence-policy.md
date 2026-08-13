@@ -16,7 +16,7 @@ An identity claim never implies an activity claim. A company that sells an energ
 
 - Only an **exact bare domain** enters the run. A company name is not an identity: "Head Change" names several unrelated businesses, and "Anheuser-Busch or its St. Louis distributor" names two entities with two sponsorship desks.
 - A decision maker enters only on an **exact LinkedIn profile URL**. A name and a company is not an identity, and the wrong match here sends a real pitch to the wrong desk.
-- Where the client list and the public record disagree — a different legal name, a different market — record the variance. Do not overwrite either side, and do not quietly pick one.
+- Where the client list and the public record disagree — a different legal name, a different market — record the variance and keep both sides in the record. The divergence itself is a finding.
 - Confidence is stated per subject: `high`, `medium`, or `low`. A `low` confidence without a recorded variance is a validation failure, not a judgement call.
 
 ## Attributes
@@ -30,7 +30,7 @@ An identity claim never implies an activity claim. A company that sells an energ
 - `activation_history`, `budget_signal`, and every other activity field require a **dated** signal inside the recency window.
 - Absence downgrades to `unknown`. It never implies `false`. A company with no findable sponsorship has not been shown to lack a sponsorship budget.
 - Company size is not evidence of activity. Neither is category, revenue, or the fact that competitors sponsor.
-- An undated activation is context, never a reason. It cannot separate a live budget from one that closed in 2019.
+- Only a dated activation can carry the reason to engage; an undated one is context, because it cannot separate a live budget from one that closed in 2019.
 
 ## Contact data
 
@@ -42,15 +42,15 @@ An identity claim never implies an activity claim. A company that sells an energ
 
 The festival packet is client-supplied, and client-supplied is not verified. It carries the same envelope as anything else.
 
-Where two client figures conflict, the field is `disputed` and carries both claims with their dates. It never resolves to whichever is more flattering, and it never reaches outreach. The attendance figure is the live example: "more than 20,000 across three days" and "about 7,500 per day" came from the same client four days apart and measure different things.
+Where two client figures conflict, the field is `disputed` and carries both claims with their dates. It stays disputed until the client states one figure, and outreach draws only on settled fields. The attendance figure is the live example: "more than 20,000 across three days" and "about 7,500 per day" came from the same client four days apart and measure different things.
 
-Where a required input was named and never delivered — the sponsorship inventory, the category rules, the sponsors already in motion — the dependent field is `unsupplied` and every downstream claim that would have used it is withheld. A target is never published as clear of a rule whose contents nobody has.
+Where a required input was named and never delivered — the sponsorship inventory, the category rules, the sponsors already in motion — the dependent field is `unsupplied` and every downstream claim that would have used it is withheld. A target is published as clear of a rule only once the rule's contents are in hand.
 
 ## Access
 
 - Public pages only. Nothing behind a login, a CAPTCHA, a paywall, or an email gate.
-- An interstitial or challenge ends that read. It is reported as `blocked` with what was observed, and it is never worked around.
-- The activation page is read, never interacted with. No form submission, no state-changing click.
+- An interstitial or challenge ends that read, reported as `blocked` with what was observed. The block itself is the finding.
+- The activation page is read as-is — navigation and reading only, the page left exactly as found.
 
 ## Claims about companies and people
 
@@ -62,7 +62,7 @@ Where a required input was named and never delivered — the sponsorship invento
 
 A call is `executed` only with an HTTP response **and** a stored receipt. Otherwise it is `proposed`, `blocked_missing_credentials`, `blocked_endpoint_access`, or `failed` — in that vocabulary, precisely. Fallback work is never described as the capability it replaced, and a proposed operation is never rendered as a completed one.
 
-A drafted message is never described as sent, scheduled, or approved.
+A drafted message is described as exactly that: drafted, awaiting a named approver.
 
 ## Publication
 

@@ -1,6 +1,6 @@
 ---
 name: opulent-sponsor-context-showcase
-description: Run one sponsor target end to end — validate the entity, exhaust the Context.dev surface on the company, read one dated activation, build a sourced fit dossier, render a React Email pitch, and show it in a Dither dashboard. Use for festival or event sponsor sourcing from a client target list. Drafts, never sends.
+description: Use when sourcing festival or event sponsors, qualifying a client target list, or drafting sponsorship outreach. Fixed Context.dev plan, one dated activation verified, pitch drafted. Never sends.
 license: MIT
 ---
 
@@ -28,6 +28,7 @@ npm run dashboard                                        # 7
 - **No attendance figure appears in any draft.** The client's two figures do not reconcile.
 - **A compliance-blocked target never reaches a draft.**
 - The pitch is a draft. Sender authority is unconfirmed.
+- Outreach prose starts from `knowledge/`: read `knowledge/voice/voice-profile.md` and `knowledge/deck-facts.md` before writing any reason, subject, preview, or body. A festival fact outside `deck-facts.md` or the dossier is not written.
 
 ## 1 · Targets
 
@@ -41,7 +42,7 @@ Every target comes back `unverified_against_rule` because the three sponsors alr
 
 Pick one accepted, `draft_gate: open` row. Note its `company` and bare `domain`.
 
-*Done: subject chosen, counts read, exclusion state understood.*
+*Done: subject chosen; row, draftable, and lead counts echoed; the unverified_against_rule flag named in the report.*
 
 ## 2 · Calls
 
@@ -57,7 +58,9 @@ Pass `--linkedin-url` only when the client supplied an exact profile URL. Withou
 
 `--dry-run` prints the plan. No API key → `blocked_missing_credentials`; continue to step 3 and report it. Non-200 is a finding; record and move on.
 
-*Done: summary written, every call terminal.*
+The plan costs 90 credits per target, 110 with the decision-maker call. State that before running, and reconcile it against `credits_spent` after.
+
+*Done: summary written, every call terminal, spend reconciled against the 90/110 plan.*
 
 ## 3 · Signal
 
@@ -79,23 +82,28 @@ No verification provider is wired, so `contact_route` is `unknown` with that rea
 
 Then write the judgement the script deliberately leaves empty:
 
+Read `knowledge/voice/voice-profile.md` and `knowledge/deck-facts.md` first — the register comes from the first, every festival fact from the second.
+
 - `fit.band` and `fit.rationale`, carrying the argument against as well as for.
 - `outreach.reason_to_engage` — one dated reason, at the evidence's strength. Rank: dated activation at a comparable event → dated activation anywhere → regional expansion into the market → category fit alone.
+- `outreach.package_named` — a rate-card tier verbatim from `knowledge/deck-facts.md`, or empty. The template drops a line that names anything else.
 - `outreach.subject` and `preview_text`, written last, together.
 
 *Done: ten fields present, every `Verified` field has a source URL, fit band written.*
 
 ## 5 · Email
 
-Renders `templates/sponsor-pitch.tsx` (React Email, Dither theme) to `artifacts/pitch.html` and `.txt`.
+Renders `templates/sponsor-pitch.mjs` to `artifacts/pitch.html` and `.txt` — React Email as zero-build ESM, so `node` renders it with no compile step. Customising the pitch is editing that one file and re-running this command.
 
-Load `references/writing-quality.md` and the house-voice section of `references/sponsor-fit-and-outreach.md` first.
+Load `knowledge/voice/voice-profile.md`, `references/writing-quality.md`, and the house-voice section of `references/sponsor-fit-and-outreach.md` first.
 
 Two gates refuse before rendering: a compliance-blocked target, and a reason with no dated activation behind it. Both exit 4.
 
-Props come from the dossier and the festival packet. A prop without evidence is omitted; its section does not render. Body order: their activation → the festival → who is on site → one action. There is no attendance prop and no package line until the client supplies inventory.
+Props come from the dossier and the festival packet. A prop without evidence is omitted; its section does not render. Body order: personal note in the sender's register → the event block → the offer sheet (the deck's rate card, the named tier highlighted) → one action, signed Robert Dittrich. There is no attendance prop.
 
-*Done: both files render, every claim maps to a dossier field, `review_state: hold`.*
+`npm run email` chains `scripts/lint_pitch.mjs`: banned phrases, em dashes, attendance-shaped numbers, tier fidelity against the rate card, one ask. Exit 1 is a finding — rewrite the pitch, never the linter.
+
+*Done: both files render, every claim maps to a dossier field or `knowledge/deck-facts.md`, lint exits 0, `review_state: hold`.*
 
 ## 6 · Validate
 
@@ -121,6 +129,8 @@ Open on trigger.
 
 | Trigger | File |
 | --- | --- |
+| Any outreach prose | `knowledge/voice/voice-profile.md` |
+| Citing a festival fact, naming a tier | `knowledge/deck-facts.md` |
 | Writing prose | `references/writing-quality.md` |
 | Building the pitch | `references/sponsor-fit-and-outreach.md` |
 | Field shape unclear | `references/sponsor-dossier-contract.md` |
@@ -137,3 +147,4 @@ Open on trigger.
 | Every target rejected at step 1 | Domain column empty | The client supplies domains; the skill never resolves them |
 | Validator flags a package line | Inventory still unsupplied | Remove the claim, or get the inventory |
 | Fit band looks arbitrary | Rationale written without counter-evidence | Rewrite carrying the argument against |
+| `lint_pitch` exits 1 | Deck register or an unsourced number leaked into the email | Rewrite in the sender's register; facts from `knowledge/deck-facts.md` only |

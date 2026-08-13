@@ -9,7 +9,7 @@ Base `https://api.context.dev/v1` · `Authorization: Bearer $CONTEXT_DEV_API_KEY
 | Call | Method | Credits | Use for |
 | --- | --- | --- | --- |
 | `/brand/retrieve` | POST | 10 | The core of this run. Resolves a **known** bare domain into a structured company: title, description, industries, address, socials, logos, colours. Everything downstream keys off it. |
-| `/people/retrieve` | POST | per plan | The decision maker, and only when the client supplied an exact LinkedIn URL. Returns full name, headline, location, summary, experience, education, skills. Private alpha — confirm access before planning around it. Omitted rather than guessed. |
+| `/people/retrieve` | POST | 20 (paid plans) | The decision maker, and only when the client supplied an exact LinkedIn URL. Returns full name, headline, location, summary, experience, education, skills. Price and access are provider-controlled facts — re-check <https://docs.context.dev/skill.md> before planning around them. Omitted rather than guessed. |
 
 `identifiers.linkedinUrl` is the only input. It resolves an identity you already have; it does not search for one.
 
@@ -61,3 +61,11 @@ Base `https://api.context.dev/v1` · `Authorization: Bearer $CONTEXT_DEV_API_KEY
 ## Where Context stops
 
 Context resolves and extracts from the public web. It does not hold the community's own record, it does not verify email deliverability, and it does not sit behind a login. Those are the runtime's own capabilities: the platform export for the baseline, a verification provider for deliverability, and an authenticated browser session for anything rendered or gated. Reach for the browser last — a session spent reading a static page is a slot spent on nothing.
+
+## Latency, cache, and retries
+
+Brand data is cached provider-side for about 90 days. A cached hit returns in under a second; a cold lookup runs p50 ≈ 7s, p90 ≈ 18s. The plan accepts cached responses — pass `maxAgeMs` only on the rare call where same-day freshness changes the answer, and expect to pay the cold-lookup latency for it.
+
+On 408, 429, or a 5xx, `run_calls.mjs` retries once, honouring `Retry-After` when sent and waiting a bounded backoff otherwise. A second failure is recorded as `failed` and the plan moves on — the failure is a finding, and every other status (401, 403, 404, 422) is terminal on first sight.
+
+Tag every call so the provider ledger and ours reconcile: `client:trifecta`, `app:sponsor-context-showcase`, `run:{date}`.

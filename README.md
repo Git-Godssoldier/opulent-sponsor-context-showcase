@@ -6,7 +6,7 @@ This repository holds the **instructions and the output contract**. It performs 
 
 ## What it does
 
-Depth over breadth is the point. Twenty-five shallow rows prove nothing a language model cannot produce in a minute — which is exactly where the client's list came from. One target taken to the limit of the evidence proves a method.
+Depth over breadth is the point. Thirty shallow rows prove nothing a language model cannot produce in a minute — which is exactly where the client's list came from. One target taken to the limit of the evidence proves a method.
 
 A company name and a bare domain go in. The run validates the entity before spending anything on it, exhausts the provider surface on the company — brand resolution, industry codes, sitemap, bounded crawl, screenshot, styleguide, dated public signals — reads one dated activation page, and drafts one pitch whose every sentence traces back to a field the run produced. The dashboard shows the identity fixed before retrieval, the page each field came from, what the run cost, and the eight commercial questions nobody has answered yet.
 
@@ -37,43 +37,46 @@ A third rule exists and cannot yet be enforced. Three sponsors were described as
 
 **Attendance.** The client supplied two figures four days apart — "more than 20,000 across three days" and "about 7,500 per day" — which do not reconcile and do not measure the same thing. The field is `disputed`, carries both claims with their dates, and no attendance number appears in any draft. The email template has no attendance prop at all, so there is nowhere for one to go. A number a sponsor can puncture in one question costs more than the number was worth.
 
-**Package terms.** The sponsorship inventory was named as a required input and never delivered. `$10,000 to more than $100,000` is a price with nothing attached to it, so the package line is omitted and the validator fails any packet that names one.
+**Package availability.** The decks supply a full rate card — five tiers from Presenting Sponsor at $100K+ down to Sampling Partner at $10K–$25K, extracted with slide citations into `knowledge/deck-facts.md` — so a pitch may name a tier and its published range. What was never supplied is availability: which tiers remain open and what the three in-motion sponsors hold. A pitch therefore never implies a tier is available, and the validator fails any message naming a package that is not a rate-card tier.
 
-**Sending.** `send_state` is `draft_only_not_sent` and `sender_authority` is `unconfirmed`. The pitch is signed by the client, from the client's company, to a real decision maker. An unapproved send in that shape is the client's reputation, not ours.
+**Sending.** `send_state` is `draft_only_not_sent` and `sender_authority` is `unconfirmed`. Every draft goes out under the client's own name to a real decision maker, so the send button belongs to the client — the reasoning is in `references/sponsor-fit-and-outreach.md`.
 
 ## The ten required fields
 
-Every sponsor carries all ten, whatever the outcome: category fit, activation history, audience overlap, regional presence, budget signal, decision maker, decision maker title, contact route, compliance flags, and changes since last.
-
-A field missing from the packet is worse than one present and `unknown` — the reader cannot tell "we looked and found nothing" from "we never looked."
+Every sponsor carries all ten, whatever the outcome: category fit, activation history, audience overlap, regional presence, budget signal, decision maker, decision maker title, contact route, compliance flags, and changes since last. Each ships with its own state, so a gap always says which kind of gap it is — the envelope rules are in `references/sponsor-dossier-contract.md`.
 
 ## Layout
 
 ```
 SKILL.md                          the seven-command procedure the agent follows
+knowledge/
+  sources/                        the client's decks, bit-for-bit, checksummed
+  deck-facts.md                   every deck claim with its slide citation
+  voice/voice-profile.md          the sender's register, the deck's, and the line between
+  voice/banned-phrases.json       the machine-checkable half, enforced by lint_pitch
 targets/
-  nocturnal-valley-targets.csv    the client's 25-company list
+  nocturnal-valley-targets.csv    the client's list plus researched vodka and tequila rows
   exclusions.csv                  the rule gate, including the rules nobody has supplied
 fixtures/
   festival-packet.json            the property being sold; client-supplied, not verified
 templates/
   sponsor-dossier.template.json   one target: ten required fields + six extension blocks
   packet.template.json            the run: scope, festival, ledger, health, open gates
-  sponsor-pitch.tsx               React Email on the Dither theme, one call to action
+  sponsor-pitch.mjs               React Email, zero-build ESM: node renders it directly
 references/
   contextdev-capabilities.md      every provider call, its credit cost, when to reach for it
   sponsor-dossier-contract.md     the field envelope and the rules the validator enforces
   sponsor-fit-and-outreach.md     fit bands, reason ranking, message build, house voice
   writing-quality.md              word-level rules, with the full swap tables
-  dashboard-brief.md              decision layer, audit layer, chart contract
+  dashboard-brief.md              layers, rules, visual direction, licensing
   evidence-policy.md              what may be claimed, from what, and where a claim stops
-  operation-contract.md           the receipt shape every call carries
 scripts/
   load_targets.mjs                both gates; rejects anything without an exact domain
   run_calls.mjs                   the fixed provider plan, one receipt per call
   scrape_signal.mjs               the activation brief, and its check
   assemble.mjs                    receipts + signal + packet -> dossier and packet
   render_email.mjs                the pitch, behind two refusing gates
+  lint_pitch.mjs                  voice lint; npm run email chains it
   validate_packet.mjs             enforces the dossier contract
 dashboard/                        Next.js app; reads the packet, renders its empty states
 ```

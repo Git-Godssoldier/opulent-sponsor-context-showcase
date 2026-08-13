@@ -4,7 +4,7 @@ How a target becomes a fit band, how a fit band becomes a reason, and how a reas
 
 ## Fit is a claim about them, not about us
 
-The festival's qualities are constant across all 25 targets. They cannot explain why this company. Anything in the fit rationale that would read identically for Liquid Death and Drury Hotels is not a rationale.
+The festival's qualities are constant across every target on the list. They cannot explain why this company. Anything in the fit rationale that would read identically for Liquid Death and Drury Hotels is not a rationale.
 
 Five inputs, in the order they carry weight:
 
@@ -51,7 +51,7 @@ What stays out:
 
 - **Any attendance number.** The client gave two figures that do not reconcile and that measure different things. A number a sponsor can puncture in one question costs more than the number was worth.
 - **Any package or inventory claim** until the client supplies the inventory. "Packages from $10,000" is a price with nothing attached to it.
-- **Superlatives about the festival.** It is an inaugural event. It has no track record, and claiming one invites the check that finds there is none.
+- **Superlatives about the festival.** The first edition earns its record in September; a track record claimed before then invites the one check that finds it missing.
 - **Any implication the sponsor already knows us, or that someone referred us.**
 
 ## House voice

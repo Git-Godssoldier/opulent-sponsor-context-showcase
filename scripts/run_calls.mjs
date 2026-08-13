@@ -49,8 +49,11 @@ function plan({ domain, company, linkedinUrl }) {
       query: { domain, maxLinks: 200 }, credits: 1 },
     { id: "05-crawl", capability: "bounded crawl", method: "POST", path: "/web/crawl",
       body: { url: `https://${domain}`, maxPages: 8, maxDepth: 2, followSubdomains: false }, credits: 8 },
+    // Cached is correct here: brand pages sit in the provider cache ~90 days, a cached
+    // hit returns in under a second, and a forced-fresh read pays ~7s cold latency to
+    // answer a question freshness does not change.
     { id: "06-markdown", capability: "page read", method: "GET", path: "/web/scrape/markdown",
-      query: { url: `https://${domain}`, maxAgeMs: 0 }, credits: 1 },
+      query: { url: `https://${domain}` }, credits: 1 },
 
     // domain XOR directUrl on these three. viewport is an object, not a string.
     { id: "07-screenshot", capability: "screenshot", method: "GET", path: "/web/screenshot",
@@ -93,6 +96,7 @@ if (a.linkedinUrl && !/^https:\/\/(www\.)?linkedin\.com\/in\//i.test(a.linkedinU
 }
 
 const calls = plan(a);
+const plannedCredits = calls.reduce((n, c) => n + (Number(c.credits) || 0), 0);
 const key = process.env.CONTEXT_DEV_API_KEY;
 await mkdir(resolve(OUT, "receipts"), { recursive: true });
 
@@ -100,26 +104,41 @@ if (a.dryRun || !key) {
   const reason = a.dryRun ? "dry_run" : "blocked_missing_credentials";
   const summary = calls.map((c) => ({ ...c, status: reason, http_status: null, receipt: null }));
   await writeFile(resolve(OUT, "calls-summary.json"),
-    JSON.stringify({ status: reason, subject: { domain: a.domain, company: a.company }, calls: summary }, null, 2) + "\n");
-  console.log(`${reason}: ${calls.length} calls planned, none executed`);
+    JSON.stringify({ status: reason, subject: { domain: a.domain, company: a.company }, planned_credits: plannedCredits, calls: summary }, null, 2) + "\n");
+  console.log(`${reason}: ${calls.length} calls planned, ${plannedCredits} credits budgeted, none executed`);
   for (const c of calls) console.log(`  ${c.id.padEnd(20)} ${c.method.padEnd(5)} ${c.path}`);
   if (!a.linkedinUrl) console.log("\nno --linkedin-url: decision maker call omitted, not guessed");
   process.exit(key || a.dryRun ? 0 : 1);
 }
 
 const summary = [];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// One retry on 408/429/5xx, honouring Retry-After, capped at 30s. Everything else is
+// terminal on first sight: a 4xx is a fact about the request, and the plan records it.
+const RETRYABLE = (s) => s === 408 || s === 429 || s >= 500;
+
 for (const c of calls) {
   const url = new URL(BASE + c.path);
   for (const [k, v] of Object.entries(c.query ?? {})) url.searchParams.set(k, String(v));
   const started = Date.now();
-  let res, bodyText;
+  let res, bodyText, retried = false;
   try {
-    res = await fetch(url, {
-      method: c.method,
-      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      ...(c.body ? { body: JSON.stringify(c.body) } : {}),
-    });
-    bodyText = await res.text();
+    for (;;) {
+      res = await fetch(url, {
+        method: c.method,
+        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+        ...(c.body ? { body: JSON.stringify(c.body) } : {}),
+      });
+      if (!res.ok && RETRYABLE(res.status) && !retried) {
+        retried = true;
+        const after = Math.min(Number(res.headers.get("retry-after")) * 1000 || 2000, 30_000);
+        console.log(`  ${c.id.padEnd(20)} ${res.status}, retrying once in ${after}ms`);
+        await sleep(after);
+        continue;
+      }
+      bodyText = await res.text();
+      break;
+    }
   } catch (err) {
     summary.push({ ...c, status: "failed", http_status: null, error: err.message, receipt: null });
     console.log(`  ${c.id.padEnd(20)} FAILED  ${err.message}`);
@@ -155,5 +174,5 @@ await writeFile(resolve(OUT, "calls-summary.json"),
   JSON.stringify({ status: "complete", subject: { domain: a.domain, company: a.company },
                    executed: summary.filter((s) => s.status === "executed").length,
                    failed: summary.filter((s) => s.status !== "executed").length,
-                   credits_spent: spent, calls: summary }, null, 2) + "\n");
+                   planned_credits: plannedCredits, credits_spent: spent, calls: summary }, null, 2) + "\n");
 console.log(`\nexecuted ${summary.filter((s) => s.status === "executed").length}/${calls.length} · ${spent} credits · ${OUT}/calls-summary.json`);

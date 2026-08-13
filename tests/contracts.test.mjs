@@ -59,9 +59,58 @@ test("attendance is disputed and carries both client claims", () => {
   for (const c of festival.attendance.claims) assert.ok(c.source && c.source_date);
 });
 
-test("the sponsorship inventory is unsupplied, so no package can be named", () => {
+test("the rate card is supplied with slide citations; availability is not", () => {
+  assert.equal(festival.packages.rate_card_state, "supplied");
+  assert.equal(festival.packages.rate_card.length, 5);
+  for (const tier of festival.packages.rate_card) {
+    assert.ok(tier.tier && tier.range && tier.source, `${tier.tier}: incomplete`);
+  }
   assert.equal(festival.packages.inventory, null);
   assert.equal(festival.packages.inventory_state, "unsupplied");
+});
+
+/* ---------------- the voice lint ---------------- */
+
+function lintPitch(text, subject, preview) {
+  const dir = mkdtempSync(join(tmpdir(), "pitch-"));
+  writeFileSync(join(dir, "pitch.txt"), text);
+  writeFileSync(join(dir, "pitch.props.json"),
+    JSON.stringify({ subject, props: { previewText: preview } }));
+  try {
+    run(resolve("scripts/lint_pitch.mjs"), [dir], { stdio: "pipe" });
+    return { code: 0, out: "" };
+  } catch (err) {
+    return { code: err.status, out: String(err.stderr) };
+  }
+}
+
+const CLEAN_PITCH = [
+  "Alex,",
+  "Liquid Death sampled at Electric Forest in June per the festival's sponsor page.",
+  "Nocturnal Valley runs September 24 to 26 at Astral Valley Art Park near St. Louis.",
+  "The Sampling Partner tier runs $10K-$25K and covers multi-day product sampling.",
+  "Book fifteen minutes",
+].join("\n");
+
+test("a clean pitch in the sender's register lints clean", () => {
+  const r = lintPitch(CLEAN_PITCH, "Sampling at Nocturnal Valley", "Three nights near St. Louis in September");
+  assert.equal(r.code, 0);
+});
+
+test("deck register and disputed figures are caught by name", () => {
+  const bad = "I hope this finds you well. An immersive festival with 20,000 attendees awaits.\nBook fifteen minutes";
+  const r = lintPitch(bad, "s", "p");
+  assert.equal(r.code, 1);
+  assert.match(r.out, /banned-phrase/);
+  assert.match(r.out, /immersive/);
+  assert.match(r.out, /attendance/);
+});
+
+test("a dollar figure outside the rate card is caught", () => {
+  const bad = CLEAN_PITCH.replace("$10K-$25K", "$12K-$30K");
+  const r = lintPitch(bad, "s", "p");
+  assert.equal(r.code, 1);
+  assert.match(r.out, /tier-fidelity/);
 });
 
 test("sender authority is unconfirmed", () => {
