@@ -68,6 +68,7 @@ if (prior && (prior.id === (subject.id ?? prior.id))) {
 dossier.id = subject.id ?? null;
 dossier.company = brand?.title ?? subject.company ?? summary.subject?.company ?? null;
 dossier.domain = subject.domain ?? summary.subject?.domain ?? null;
+dossier.origin = subject.origin ?? "client_list";
 dossier.client_list = {
   category: subject.category ?? null,
   region_fit: subject.region_fit ?? null,
@@ -247,7 +248,20 @@ Object.assign(packet, {
     { gate: "attendance_figure", state: "disputed", note: festival.attendance.reason },
     { gate: "sender_account", state: "unresolved", note: festival.sender.authority_reason },
     { gate: "acceptance_criteria", state: "unresolved", note: "No agreed measure of a successful demonstration." },
+    { gate: "pilot_price_scope", state: "unresolved", note: "The price and scope of a paid pilot were never proposed or agreed." },
+    { gate: "data_sources_permissions", state: "unresolved", note: "The exact data sources and access rules were never established. Warm-path mapping needs the client's inbox and network, and stays out of scope until this gate resolves." },
+    { gate: "materials_handoff_date", state: "unresolved", note: "Bob's complete materials handoff has no due date. The meeting note called this the main weakness." },
   ],
+  // The meeting note's own review dimensions for the bounded demonstration. The run
+  // fills what it can measure; the rest stays pending with the gate that blocks it.
+  review_scorecard: {
+    target_quality: { value: null, state: "pending_review", note: "Fit bands across the cohort, once more than one target has run." },
+    decision_maker_coverage: { value: person ? "1/1 retrieved" : "0/1 retrieved", state: "measured", note: "Retrieved decision makers over targets run. Rises only with client-supplied profile URLs." },
+    warm_paths: { value: null, state: "blocked", note: "Requires the client's inbox and network access — see the data_sources_permissions gate." },
+    message_quality: { value: null, state: "pending_review", note: "lint_pitch verdict plus the client's read of the draft." },
+    time_saved: { value: null, state: "pending_review", note: "Against the client's stated baseline: ChatGPT ideas, then manual LinkedIn research per company." },
+    pipeline_estimate: { value: null, state: "pending_review", note: "Client's judgement after reviewing drafts; never inferred from fit bands alone." },
+  },
   unknowns: Object.entries(R).filter(([, v]) => v.state === "unknown").map(([k, v]) => `${k}: ${v.reason ?? "not retrieved"}`),
 });
 

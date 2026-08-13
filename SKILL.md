@@ -10,6 +10,7 @@ Eight commands, in order.
 
 ```bash
 npm run targets                                            # 1
+npm run discover -- --list                                 # 1b, net-new sponsors
 npm run calls -- --domain <bare-domain> --company <name>   # 2
 npm run signal -- --url <activation-page-url>              # 3
 npm run signal -- --check                                  # 3, after filling the brief
@@ -41,9 +42,30 @@ Compliance first: cannabis rows are admitted for research and marked undraftable
 
 Every accepted row carries `unverified_against_rule`, because the three sponsors already in motion were never named. That flag stays until the client names them.
 
+The loader folds `artifacts/discovered.csv` in automatically when step 1b has produced one, tagging each row's `origin` — a discovered target rides exactly the same gates.
+
 Pick one accepted, `draft_gate: open` row.
 
-*Done: subject chosen; row, draftable, and lead counts echoed; the `unverified_against_rule` flag named in the report.*
+*Done: subject chosen; row, draftable, discovered, and lead counts echoed; the `unverified_against_rule` flag named in the report.*
+
+## 1b · Discover net-new
+
+The client's list came from a category brainstorm, which produces names with no evidence. Discovery inverts that: harvest the sponsor lists of comparable events, where every company arrives having already bought what this festival sells, with a dated, quotable activation attached by construction.
+
+The universe lives in `fixtures/comparable-events.json`, tiered by the deck's own ICP — same format and region first (Electric Forest, North Coast, ARC, Summer Camp), then the same market (Evolution's 2026 pause left every 2025 St. Louis sponsor with a freed budget; Music at the Intersection), then national EDM properties dated inside 2026 (EDC in May, Coachella's spirits row in April, Ultra, Lollapalooza), and above all of them any prior event at Astral Valley Art Park itself.
+
+```bash
+npm run discover -- --list                  # the universe, by tier
+npm run discover -- --event <key>           # open a harvest brief
+npm run discover -- --check <key>           # validate it
+npm run discover -- --emit <key>            # append clean rows to artifacts/discovered.csv
+```
+
+Read the sponsor page in a browser session and fill the brief: one entry per sponsor, with the page's verbatim wording, the edition date, and the URL. Confirm each company's domain on its own site and record the confirmation URL; an ambiguous name stays domainless with the ambiguity noted, and the identity gate holds it. `--emit` refuses an invalid harvest and skips duplicates against the client list.
+
+Work tiers in order and stop when the draftable pool covers the ask — the client needs roughly seven net-new sponsors, not a census.
+
+*Done: harvests checked and emitted; `npm run targets` re-run showing the discovered count.*
 
 ## 2 · Calls
 
@@ -131,7 +153,7 @@ Decision layer first, audit layer beneath it. `proposed`, `blocked`, and `failed
 
 ## Report
 
-Capabilities run, capabilities skipped with reasons, credits planned against spent, unknowns, and the open commercial gates.
+Capabilities run, capabilities skipped with reasons, credits planned against spent, unknowns, the open commercial gates, and the review scorecard — the meeting note's own dimensions (target quality, decision-maker coverage, warm paths, message quality, time saved, pipeline), filled where measurable and blocked-with-reason where not.
 
 ## References
 
@@ -139,6 +161,7 @@ Open on trigger.
 
 | Trigger | File |
 | --- | --- |
+| Hunting net-new sponsors | `fixtures/comparable-events.json` via `npm run discover -- --list` |
 | Any outreach prose | `knowledge/voice/voice-profile.md` |
 | Citing a festival fact, naming a tier | `knowledge/deck-facts.md` |
 | Writing prose | `references/writing-quality.md` |

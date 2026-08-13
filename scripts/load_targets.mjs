@@ -98,7 +98,13 @@ const companyHolds = rules.filter((r) => r.scope === "client_decision" && r.patt
 const unsuppliedRules = rules.filter((r) => !r.pattern && r.supplied_by === "unsupplied");
 
 // ---- targets ---------------------------------------------------------------
-const rows = parseCsv(readFileSync(file, "utf8"));
+// Discovered rows ride the same gates as the client's own list — no separate class of
+// citizen. artifacts/discovered.csv is folded in automatically when it exists, each row
+// tagged with its origin so the packet can say where a target came from.
+const files = [[file, "client_list"]];
+if (existsSync("artifacts/discovered.csv")) files.push(["artifacts/discovered.csv", "discovered"]);
+const rows = files.flatMap(([f, origin]) =>
+  parseCsv(readFileSync(f, "utf8")).map((r) => ({ ...r, origin })));
 const accepted = [];
 const rejected = [];
 
@@ -133,6 +139,7 @@ for (const [i, row] of rows.entries()) {
     activation_lead: row.activation_lead || null,
     activation_lead_source: row.activation_lead_source || null,
     note: row.note || null,
+    origin: row.origin || "client_list",
     draft_gate: ban ? "blocked_compliance" : hold ? "blocked_client_decision" : "open",
     draft_gate_reason: ban ? ban.reason : hold ? hold.reason : null,
     draft_gate_source: ban ? ban.supplied_by : hold ? hold.supplied_by : null,
@@ -156,6 +163,7 @@ const summary = {
   rejected: rejected.length,
   draftable: deduped.filter((t) => t.draft_gate === "open").length,
   with_activation_lead: deduped.filter((t) => t.activation_lead).length,
+  discovered: deduped.filter((t) => t.origin === "discovered").length,
   blocked_compliance: deduped.filter((t) => t.draft_gate === "blocked_compliance").length,
   blocked_client_decision: deduped.filter((t) => t.draft_gate === "blocked_client_decision").length,
   unverified_against_rule: deduped.filter((t) => t.exclusion_check === "unverified_against_rule").length,
@@ -166,6 +174,7 @@ const summary = {
 
 if (outPath) { mkdirSync(dirname(outPath), { recursive: true }); writeFileSync(outPath, JSON.stringify(summary, null, 2) + "\n"); }
 
+if (files.length > 1) console.log(`sources:     ${files.map(([f]) => f).join(" + ")}`);
 console.log(`rows:        ${rows.length}`);
 console.log(`accepted:    ${deduped.length}`);
 console.log(`duplicates:  ${accepted.length - deduped.length}`);

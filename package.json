@@ -14,7 +14,8 @@
     "test": "node --test tests/*.test.mjs",
     "lint:pitch": "node scripts/lint_pitch.mjs",
     "brand": "node scripts/extract_brand.mjs",
-    "dashboard:serve": "npm --prefix dashboard run start"
+    "dashboard:serve": "npm --prefix dashboard run start",
+    "discover": "node scripts/discover_sponsors.mjs"
   },
   "engines": {
     "node": ">=20"

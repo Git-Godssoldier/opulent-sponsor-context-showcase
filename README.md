@@ -13,7 +13,8 @@ A company name and a bare domain go in. The run validates the entity before spen
 ## Run it
 
 ```bash
-npm run targets                                            # gate the client list
+npm run targets                                            # gate the client list (+ discovered rows)
+npm run discover -- --list                                 # net-new: harvest comparable events' sponsors
 npm run calls -- --domain <bare-domain> --company <name>   # the full provider plan
 npm run signal -- --url <activation-page>                  # one dated activation, read in a browser
 npm run brand                                              # campaign identity from the deck
@@ -25,6 +26,10 @@ npm test                                                   # contract tests
 ```
 
 Retrieval needs `CONTEXT_DEV_API_KEY` server-side. Without it the run still validates, plans, and prices — and reports the retrieval stage as `blocked_missing_credentials` rather than substituting for it.
+
+## Net-new discovery
+
+The client's own process was a ChatGPT brainstorm followed by manual research — names with no evidence. Discovery inverts it: `fixtures/comparable-events.json` holds a tiered universe of comparable 2026 events, and harvesting their sponsor pages yields companies that already bought what this festival sells, each with a dated, quotable activation. Same format and region outrank national properties; Evolution Festival's 2026 pause makes its 2025 St. Louis sponsors the warmest cold list in the market; and any sponsor of a prior event at Astral Valley Art Park itself is the strongest comp that can exist. Discovered rows are emitted in the client list's own column shape and ride the same gates.
 
 ## Two gates, and why they are gates
 
@@ -60,6 +65,7 @@ targets/
   exclusions.csv                  the rule gate, including the rules nobody has supplied
 fixtures/
   festival-packet.json            the property being sold; client-supplied, not verified
+  comparable-events.json          the discovery universe, tiered by the deck's own ICP
 templates/
   sponsor-dossier.template.json   one target: ten required fields + six extension blocks
   packet.template.json            the run: scope, festival, ledger, health, open gates
@@ -76,6 +82,7 @@ scripts/
   run_calls.mjs                   the fixed provider plan, one receipt per call
   scrape_signal.mjs               the activation brief, and its check
   assemble.mjs                    receipts + signal + packet -> dossier and packet
+  discover_sponsors.mjs           net-new harvest from comparable events' sponsor pages
   render_email.mjs                the pitch, behind two refusing gates
   extract_brand.mjs               deck (+ optional site styleguide) -> brand tokens
   lint_pitch.mjs                  voice lint; npm run email chains it

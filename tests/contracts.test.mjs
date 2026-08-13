@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -153,14 +153,21 @@ test("sender authority is unconfirmed", () => {
 
 /* ---------------- the target loader ---------------- */
 
-function cohortFrom(targetsCsv, exclusionsCsv) {
+function cohortFrom(targetsCsv, exclusionsCsv, discoveredCsv = null) {
+  // Isolated cwd: the loader auto-folds artifacts/discovered.csv from wherever it runs,
+  // so these fixtures must own their working directory or the repo's real run artifacts
+  // leak into the counts.
   const dir = mkdtempSync(join(tmpdir(), "sponsor-"));
   const t = join(dir, "t.csv");
   const x = join(dir, "x.csv");
   const out = join(dir, "cohort.json");
   writeFileSync(t, targetsCsv);
   writeFileSync(x, exclusionsCsv);
-  run("scripts/load_targets.mjs", [t, "--exclusions", x, "--out", out]);
+  if (discoveredCsv) {
+    mkdirSync(join(dir, "artifacts"), { recursive: true });
+    writeFileSync(join(dir, "artifacts/discovered.csv"), discoveredCsv);
+  }
+  run(resolve("scripts/load_targets.mjs"), [t, "--exclusions", x, "--out", out], { cwd: dir });
   return JSON.parse(readFileSync(out, "utf8"));
 }
 
@@ -311,4 +318,72 @@ test("a strong band without its evidence is refused by name", () => {
   const r = validateRun(file, dir);
   assert.equal(r.code, 1);
   assert.match(r.out, /strong requires retrieved activation_history/);
+});
+
+/* ---------------- discovery ---------------- */
+
+const DISCOVER = resolve("scripts/discover_sponsors.mjs");
+
+function harvest(dir, fill) {
+  run(DISCOVER, ["--event", "evolution-stl"], { cwd: dir });
+  const briefPath = join(dir, "artifacts/discovery/evolution-stl.json");
+  const brief = JSON.parse(readFileSync(briefPath, "utf8"));
+  fill(brief);
+  writeFileSync(briefPath, JSON.stringify(brief));
+  return briefPath;
+}
+
+const GOOD_SPONSOR = {
+  company: "World Wide Technology", category_guess: "technology",
+  evidence_quote: "fixture quote", evidence_date: "2025-09",
+  source_url: "https://evolutionfestival.com",
+  domain: "wwt.com", domain_confirmed: true, confirmation_url: "https://www.wwt.com",
+  ambiguity_note: null, already_on_list: false,
+};
+
+test("an unquoted or unconfirmed harvest is refused by name", () => {
+  const dir = mkdtempSync(join(tmpdir(), "disc-"));
+  harvest(dir, (b) => {
+    b.edition_confirmed = true; b.list_dated = "2025-09"; b.observed_at = "2026-08-13";
+    b.sponsors_observed = [{ ...GOOD_SPONSOR, evidence_quote: null, domain_confirmed: false }];
+  });
+  try {
+    run(DISCOVER, ["--check", "evolution-stl"], { cwd: dir, stdio: "pipe" });
+    assert.fail("check should have exited 1");
+  } catch (err) {
+    assert.match(String(err.stderr), /no evidence_quote/);
+    assert.match(String(err.stderr), /domain set but domain_confirmed is false/);
+  }
+});
+
+test("a clean harvest emits rows the loader accepts, with origin and lead attached", () => {
+  const dir = mkdtempSync(join(tmpdir(), "disc-"));
+  harvest(dir, (b) => {
+    b.edition_confirmed = true; b.list_dated = "2025-09"; b.observed_at = "2026-08-13";
+    b.sponsors_observed = [GOOD_SPONSOR];
+  });
+  run(DISCOVER, ["--emit", "evolution-stl"], { cwd: dir });
+  const discovered = readFileSync(join(dir, "artifacts/discovered.csv"), "utf8");
+  assert.match(discovered, /World Wide Technology/);
+
+  const cohort = cohortFrom(
+    "company,category,domain,region_fit,note\nAcme,beer,acme.com,midwest,\n",
+    EXCLUSIONS,
+    discovered,
+  );
+  assert.equal(cohort.accepted, 2);
+  assert.equal(cohort.discovered, 1);
+  const wwt = cohort.targets.find((t) => t.id === "world-wide-technology");
+  assert.equal(wwt.origin, "discovered");
+  assert.match(wwt.activation_lead, /Evolution Festival 2025-09/);
+});
+
+test("emit skips a company already on the client list", () => {
+  const dir = mkdtempSync(join(tmpdir(), "disc-"));
+  harvest(dir, (b) => {
+    b.edition_confirmed = true; b.list_dated = "2025-09"; b.observed_at = "2026-08-13";
+    b.sponsors_observed = [{ ...GOOD_SPONSOR, company: "Sun Cruiser", already_on_list: true }];
+  });
+  const out = run(DISCOVER, ["--emit", "evolution-stl"], { cwd: dir });
+  assert.match(out, /\+0 row\(s\), 1 skipped/);
 });
