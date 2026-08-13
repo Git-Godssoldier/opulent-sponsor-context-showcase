@@ -1,0 +1,18 @@
+node_modules/
+dashboard/node_modules/
+dashboard/.next/
+.scratch/
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# The client's own list and the exclusion rules ship, because they are the demo's input
+# and they contain no personal data — company names, categories, and public domains.
+# A list that carries named contacts does not belong here.
+targets/*-private.csv
+
+# Run output
+/artifacts/
+
+# Local preview config
+.claude/

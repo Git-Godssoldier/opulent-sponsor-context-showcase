@@ -1,0 +1,174 @@
+#!/usr/bin/env node
+/**
+ * load_targets.mjs — turn a client target list into a validated sponsor cohort.
+ *
+ *   node scripts/load_targets.mjs targets/<file>.csv \
+ *     [--exclusions targets/exclusions.csv] [--out artifacts/cohort.json]
+ *
+ * Accepts the column shape a client list actually arrives in:
+ *   company, category, domain, region_fit, note
+ *
+ * Two gates, in this order.
+ *
+ * Compliance first. A banned category is settled without knowing which legal entity the
+ * client meant, so those rows are admitted for research and marked undraftable rather
+ * than sent back for a domain that would change nothing.
+ *
+ * Identity second. A row without an exact bare domain is REJECTED, never resolved by
+ * search. "Anheuser-Busch or its St. Louis distributor" names two companies with two
+ * sponsorship desks and two answers. Guessing which one costs a real pitch sent to the
+ * wrong desk, and the client is the only party who knows which they meant.
+ *
+ * The exclusion file is a second gate and it fails loud. Where the client named a
+ * rule but never supplied its contents — the sponsors already in motion, the category
+ * conflicts — every target is marked `unverified_against_rule`. That is not a
+ * technicality. Pitching a sponsor who is already mid-negotiation with the client is
+ * the single most expensive mistake this workflow can make.
+ */
+import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
+
+const [file, ...rest] = process.argv.slice(2);
+const flag = (n, d) => { const i = rest.indexOf(`--${n}`); return i === -1 ? d : rest[i + 1]; };
+const outPath = flag("out", null);
+const exclPath = flag("exclusions", "targets/exclusions.csv");
+
+if (!file) {
+  console.error("usage: node scripts/load_targets.mjs <targets.csv> [--exclusions <file>] [--out <path>]");
+  process.exit(2);
+}
+
+/** Bare domain: no scheme, no www, no path. One dot minimum. */
+const BARE_DOMAIN = /^(?!www\.)(?!https?:)[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
+/**
+ * A character scanner, not a regex.
+ *
+ * The regex this replaces dropped every field on any row beginning with an empty cell —
+ * `,already_in_motion,"…"` parsed as five empty strings — which silently disabled the
+ * exclusion rules it was reading. A gate that fails open is worse than no gate, and a
+ * leading empty column is ordinary in a client's CSV.
+ */
+function splitRow(line) {
+  const cells = [];
+  let cur = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; }
+        else quoted = false;
+      } else cur += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ",") { cells.push(cur); cur = ""; }
+    else cur += ch;
+  }
+  cells.push(cur);
+  return cells;
+}
+
+function parseCsv(text) {
+  const [head, ...lines] = text.trim().split(/\r?\n/);
+  const cols = splitRow(head).map((c) => c.trim().toLowerCase());
+  return lines.filter(Boolean).map((line) => {
+    const cells = splitRow(line);
+    const row = {};
+    cols.forEach((c, i) => { row[c] = (cells[i] ?? "").trim(); });
+    return row;
+  });
+}
+
+const slug = (s) => String(s || "").toLowerCase().normalize("NFKD")
+  .replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+// ---- exclusion rules -------------------------------------------------------
+const rules = existsSync(exclPath) ? parseCsv(readFileSync(exclPath, "utf8")) : [];
+const categoryBans = rules.filter((r) => r.scope === "compliance" && r.pattern);
+const unsuppliedRules = rules.filter((r) => !r.pattern && r.supplied_by === "unsupplied");
+
+// ---- targets ---------------------------------------------------------------
+const rows = parseCsv(readFileSync(file, "utf8"));
+const accepted = [];
+const rejected = [];
+
+for (const [i, row] of rows.entries()) {
+  const company = row.company || "";
+  const domain = (row.domain || "").toLowerCase();
+
+  // Compliance runs before identity. A banned category is settled without knowing which
+  // legal entity the client meant, and reporting "no domain" on a row that could never be
+  // drafted anyway sends someone to find a domain that changes nothing.
+  const ban = categoryBans.find((r) => r.pattern === row.category);
+
+  const problems = [];
+  if (!company) problems.push("no company name");
+  if (!ban) {
+    if (!domain) problems.push("no domain — supply the exact bare domain of the entity you mean");
+    else if (!BARE_DOMAIN.test(domain)) problems.push(`domain is not bare, e.g. example.com — got ${domain}`);
+  }
+
+  if (problems.length) {
+    rejected.push({ row: i + 2, company: company || "(unnamed)", category: row.category || null, problems });
+    continue;
+  }
+
+  accepted.push({
+    id: slug(company),
+    company,
+    category: row.category || null,
+    domain: domain || null,
+    region_fit: row.region_fit || null,
+    note: row.note || null,
+    draft_gate: ban ? "blocked_compliance" : "open",
+    draft_gate_reason: ban ? ban.reason : null,
+    draft_gate_source: ban ? ban.supplied_by : null,
+    exclusion_check: unsuppliedRules.length ? "unverified_against_rule" : "clear",
+    exclusion_check_reason: unsuppliedRules.map((r) => r.reason),
+  });
+}
+
+const seen = new Set();
+const deduped = accepted.filter((t) => {
+  const key = t.domain ?? `name:${t.id}`;
+  return !seen.has(key) && seen.add(key);
+});
+
+const summary = {
+  file,
+  exclusions_file: existsSync(exclPath) ? exclPath : null,
+  rows: rows.length,
+  accepted: deduped.length,
+  duplicates: accepted.length - deduped.length,
+  rejected: rejected.length,
+  draftable: deduped.filter((t) => t.draft_gate === "open").length,
+  blocked_compliance: deduped.filter((t) => t.draft_gate === "blocked_compliance").length,
+  unverified_against_rule: deduped.filter((t) => t.exclusion_check === "unverified_against_rule").length,
+  open_rules: unsuppliedRules.map((r) => r.reason),
+  targets: deduped,
+  blocked: rejected,
+};
+
+if (outPath) writeFileSync(outPath, JSON.stringify(summary, null, 2) + "\n");
+
+console.log(`rows:        ${rows.length}`);
+console.log(`accepted:    ${deduped.length}`);
+console.log(`duplicates:  ${accepted.length - deduped.length}`);
+console.log(`rejected:    ${rejected.length}`);
+console.log(`draftable:   ${summary.draftable}  (${summary.blocked_compliance} blocked on compliance)`);
+for (const r of rejected) {
+  console.log(`  row ${r.row}  ${r.company}${r.category ? ` (${r.category})` : ""} — ${r.problems.join("; ")}`);
+}
+const banned = deduped.filter((t) => t.draft_gate === "blocked_compliance");
+if (banned.length) {
+  console.log(`\nblocked on compliance, researchable but not draftable:`);
+  for (const b of banned) console.log(`  ${b.company} (${b.category}) — ${b.draft_gate_source}`);
+}
+if (unsuppliedRules.length) {
+  console.log(`\n${deduped.length} target(s) marked unverified_against_rule:`);
+  for (const r of unsuppliedRules) console.log(`  - ${r.reason}`);
+}
+if (rejected.length) {
+  console.log(`\n${rejected.length} target(s) cannot enter the cohort without an exact bare domain.`);
+}
+process.exit(0);

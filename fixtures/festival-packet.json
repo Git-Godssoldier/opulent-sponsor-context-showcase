@@ -1,0 +1,92 @@
+{
+  "_comment": "The property being sold. Fixed input, not scraped. Every field carries where it came from, because the outreach draws its claims from here and a claim with no source cannot leave the building.",
+  "event_name": "Nocturnal Valley",
+  "edition": "inaugural",
+  "dates": {
+    "start": "2026-09-24",
+    "end": "2026-09-26",
+    "nights": 3,
+    "source": "client_deck",
+    "state": "supplied"
+  },
+  "venue": {
+    "name": "Astral Valley Art Park",
+    "market": "St. Louis, Missouri",
+    "distance_note": "About 45 minutes south of St. Louis",
+    "source": "client_sample_outreach",
+    "state": "supplied"
+  },
+  "format": {
+    "stages": ["Astral", "Nocturnal", "Forest"],
+    "elements": ["multi-day camping", "VIP hospitality", "wellness", "art", "creator content", "product sampling"],
+    "source": "client_deck",
+    "state": "supplied"
+  },
+  "audience": {
+    "primary_age": "24-34",
+    "secondary_age": "18-23",
+    "household_income": "$60,000-$140,000",
+    "gender_split": "55% male / 45% female",
+    "region": "Midwest",
+    "interests": ["music", "travel", "wellness", "nightlife", "fashion", "social media"],
+    "source": "client_deck",
+    "state": "supplied"
+  },
+  "attendance": {
+    "value": null,
+    "state": "disputed",
+    "confidence": "Unknown",
+    "claims": [
+      {
+        "value": "more than 20,000 across three days",
+        "source": "client_sample_outreach",
+        "source_date": "2026-08-11"
+      },
+      {
+        "value": "about 7,500 per day, implying about 22,500 admissions across three days",
+        "source": "meeting_note",
+        "source_date": "2026-08-10"
+      }
+    ],
+    "reason": "Two client-supplied figures that do not reconcile, and they measure different things — total attendees against daily admissions. An inaugural festival has no gate history to settle it. No attendance number may appear in outreach until the client states one.",
+    "resolves_when": "Client confirms a single figure and says whether it counts unique attendees or daily admissions."
+  },
+  "packages": {
+    "range": "$10,000 to more than $100,000",
+    "inventory": null,
+    "inventory_state": "unsupplied",
+    "inventory_reason": "Sponsorship inventory was named as a required input and never delivered. Without it a draft cannot name what a sponsor actually receives.",
+    "source": "client_deck",
+    "state": "partial"
+  },
+  "commercial_target": {
+    "raise": "$50,000 to $100,000",
+    "sponsor_count": 10,
+    "already_in_motion": 3,
+    "remaining_to_source": 7,
+    "source": "meeting_note",
+    "source_date": "2026-08-10",
+    "state": "supplied"
+  },
+  "window": {
+    "close_by_note": "Two to three weeks to lock in a deal",
+    "stated_on": "2026-08-11",
+    "implied_deadline": "2026-09-01",
+    "source": "client_email",
+    "state": "supplied"
+  },
+  "sender": {
+    "name": "Robert Dittrich",
+    "preferred_name": "Bob",
+    "company": "Trifecta Marketing",
+    "calendly": "https://calendly.com/robertdittrich48/30min",
+    "authority_state": "unconfirmed",
+    "authority_reason": "The sending account and outreach permissions were never established. Every draft stays a draft until they are."
+  },
+  "source_materials": [
+    "Nocturnal_Valley_Sponsorship_Deck Draft.pdf (15 pages)",
+    "Nocturnal_Valley_Sponsorship_Deck Draft 2.pptx (9 slides)",
+    "Client sample cold outreach, 2026-08-11",
+    "Client target list of 25 companies, 2026-08-11"
+  ]
+}
