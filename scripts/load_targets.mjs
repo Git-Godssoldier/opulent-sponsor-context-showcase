@@ -6,7 +6,13 @@
  *     [--exclusions targets/exclusions.csv] [--out artifacts/cohort.json]
  *
  * Accepts the column shape a client list actually arrives in:
- *   company, category, domain, region_fit, note
+ *   company, category, domain, region_fit, activation_lead, activation_lead_source, note
+ *
+ * `activation_lead` is a research lead, not evidence. It records that someone saw this
+ * company sponsoring a named event, so step 3 knows where to look. It never satisfies
+ * `activation_history`, which requires a page read in this run, dated and quoted. A lead
+ * that turns out to be stale, or to describe a parent company rather than the brand, is
+ * exactly the thing step 3 exists to catch.
  *
  * Two gates, in this order.
  *
@@ -119,6 +125,8 @@ for (const [i, row] of rows.entries()) {
     category: row.category || null,
     domain: domain || null,
     region_fit: row.region_fit || null,
+    activation_lead: row.activation_lead || null,
+    activation_lead_source: row.activation_lead_source || null,
     note: row.note || null,
     draft_gate: ban ? "blocked_compliance" : "open",
     draft_gate_reason: ban ? ban.reason : null,
@@ -142,6 +150,7 @@ const summary = {
   duplicates: accepted.length - deduped.length,
   rejected: rejected.length,
   draftable: deduped.filter((t) => t.draft_gate === "open").length,
+  with_activation_lead: deduped.filter((t) => t.activation_lead).length,
   blocked_compliance: deduped.filter((t) => t.draft_gate === "blocked_compliance").length,
   unverified_against_rule: deduped.filter((t) => t.exclusion_check === "unverified_against_rule").length,
   open_rules: unsuppliedRules.map((r) => r.reason),
@@ -156,6 +165,7 @@ console.log(`accepted:    ${deduped.length}`);
 console.log(`duplicates:  ${accepted.length - deduped.length}`);
 console.log(`rejected:    ${rejected.length}`);
 console.log(`draftable:   ${summary.draftable}  (${summary.blocked_compliance} blocked on compliance)`);
+console.log(`leads:       ${summary.with_activation_lead} carry a prior-activation lead to verify in step 3`);
 for (const r of rejected) {
   console.log(`  row ${r.row}  ${r.company}${r.category ? ` (${r.category})` : ""} — ${r.problems.join("; ")}`);
 }

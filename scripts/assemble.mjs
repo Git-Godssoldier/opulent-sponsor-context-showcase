@@ -52,7 +52,13 @@ const dossier = await read("templates/sponsor-dossier.template.json");
 dossier.id = subject.id ?? null;
 dossier.company = brand?.title ?? subject.company ?? summary.subject?.company ?? null;
 dossier.domain = subject.domain ?? summary.subject?.domain ?? null;
-dossier.client_list = { category: subject.category ?? null, region_fit: subject.region_fit ?? null, note: subject.note ?? null };
+dossier.client_list = {
+  category: subject.category ?? null,
+  region_fit: subject.region_fit ?? null,
+  note: subject.note ?? null,
+  activation_lead: subject.activation_lead ?? null,
+  activation_lead_source: subject.activation_lead_source ?? null,
+};
 dossier.gates = {
   draft_gate: subject.draft_gate ?? null,
   draft_gate_reason: subject.draft_gate_reason ?? null,
@@ -74,7 +80,9 @@ R.activation_history = signal.reason_eligible === true
   : { value: null, state: "unknown", confidence: "Unknown", source: null, source_url: null, observed_at: null,
       reason: signal.source_url
         ? "A page was read but the signal was undated, unquoted, or not marked eligible. An undated sponsorship says nothing about a live budget."
-        : "No activation page has been read yet." };
+        : subject.activation_lead
+          ? `No activation page has been read yet. There is a lead to check: ${subject.activation_lead} (${subject.activation_lead_source}). A lead is where to look, never what was found.`
+          : "No activation page has been read yet." };
 
 R.decision_maker = person
   ? field(person?.profile?.fullName, "people_retrieve", subject.decision_maker_url ?? null)

@@ -119,6 +119,21 @@ test("a banned category is admitted for research and blocked from drafting", () 
   assert.equal(cohort.targets[0].draft_gate, "blocked_compliance");
 });
 
+test("an activation lead is carried as a lead, never as evidence", () => {
+  const cohort = cohortFrom(
+    "company,category,domain,region_fit,activation_lead,activation_lead_source,note\n" +
+    'Acme,vodka,acme.com,national,"Listed sponsor, Some Fest 2026",https://example.com/sponsors,\n',
+    EXCLUSIONS,
+  );
+  const t0 = cohort.targets[0];
+  assert.equal(t0.activation_lead, "Listed sponsor, Some Fest 2026");
+  assert.equal(t0.activation_lead_source, "https://example.com/sponsors");
+  assert.equal(cohort.with_activation_lead, 1);
+  // The lead says where to look. Only step 3 can say what was found, and the loader
+  // has no field in which to assert that it did.
+  assert.ok(!("activation_history" in t0));
+});
+
 /* ---------------- the call plan ---------------- */
 
 test("the plan omits the decision-maker call when no profile URL is supplied", () => {
