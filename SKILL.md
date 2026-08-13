@@ -16,7 +16,7 @@ npm run research -- --target <id> [--linkedin-url <url>]   # gate, call, brand, 
 npm run deliver                                            # assemble, draft, lint, validate
 ```
 
-`research` runs the target gate, the twelve provider calls, and the deck read concurrently, then assembles a first dossier. `deliver` folds in your judgement, renders the draft, lints it, attaches it, and checks the whole packet. Neither exceeds a few seconds of local work; the provider calls are the only real wait.
+`research` installs the render dependencies on a fresh clone, then runs the target gate, the twelve provider calls, and the deck read concurrently, and assembles a first dossier. `deliver` folds in your judgement, renders the draft, lints it, attaches it, and checks the whole packet. Neither exceeds a few seconds of local work; the provider calls are the only real wait.
 
 Off the critical path: `npm run discover` finds net-new sponsors before you have a target, and `npm run deliver -- --dashboard` builds the review page. Every stage also runs alone — `targets`, `calls`, `signal`, `brand`, `assemble`, `email`, `validate` — for debugging one step without re-running the rest.
 
@@ -32,6 +32,7 @@ Off the critical path: `npm run discover` finds net-new sponsors before you have
 - **A greeting name comes only from a retrieved profile.** Without one the draft opens to the company's sponsorship team. A name is never invented, borrowed, or guessed.
 - Outreach prose starts from `knowledge/agency/trifecta-profile.md` (the sender's register) and the campaign's `deck-facts.md`. A property fact outside those or the dossier is not written.
 - The pitch is a draft. Sender authority is unconfirmed.
+- **The rendered template is the output.** `artifacts/pitch.html` and `.txt` come from `templates/sponsor-pitch.mjs` and nowhere else. If the render fails, fix the render — a hand-written email carries none of the campaign's brand, rate card, or signature, and is not this workflow's deliverable.
 
 ## 1 · Research
 
@@ -117,3 +118,4 @@ Open on trigger.
 | `lint_pitch` exits 1 | Deck register or an unsourced number in the email | Rewrite in the sender's register; facts from `deck-facts.md` only |
 | Pitch renders neutral | No campaign tokens | `npm run brand`, then check the evidence counts in the tokens |
 | Calls slow to a crawl | Provider rate limits | Lower `CALL_CONCURRENCY` (default 6); the retry path absorbs one 429 per call |
+| `deliver` exits 3 | Render packages absent | `npm install` in the repo root, then re-run. Never substitute a typed email |

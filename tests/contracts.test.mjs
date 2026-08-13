@@ -419,3 +419,22 @@ test("render_email does not re-assemble when an orchestrator is driving", async 
   const src = await readFile(resolve("scripts/render_email.mjs"), "utf8");
   assert.match(src, /process\.env\.ORCHESTRATED === "1"/);
 });
+
+test("the render packages are runtime dependencies, not dev tooling", async () => {
+  const pkg = JSON.parse(await readFile(resolve("package.json"), "utf8"));
+  // In devDependencies these were absent on every fresh clone, render_email exited 3,
+  // and the operator typed the email out by hand. The rendered template is the output.
+  for (const dep of ["@react-email/render", "@react-email/components", "react", "react-dom"]) {
+    assert.ok(pkg.dependencies?.[dep], `${dep} must be a runtime dependency`);
+    assert.ok(!pkg.devDependencies?.[dep], `${dep} must not be dev-only`);
+  }
+});
+
+test("research installs the render packages, and the draft step retries", async () => {
+  const research = await readFile(resolve("scripts/research.mjs"), "utf8");
+  const email = await readFile(resolve("scripts/render_email.mjs"), "utf8");
+  assert.match(research, /node_modules\/@react-email\/render/);
+  assert.match(research, /npm", \["install"/);
+  assert.match(email, /render dependencies absent, installing once/);
+  assert.match(email, /Do not hand-write the email/);
+});

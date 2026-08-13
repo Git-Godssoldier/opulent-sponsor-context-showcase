@@ -140,13 +140,36 @@ if (missing.length) {
 }
 
 // Zero-build: the template is pure-ESM createElement, so node renders it directly.
+// A fresh clone has no node_modules, and the one thing that must never happen here is
+// an operator working around a missing package by hand-writing the email. The template
+// IS the deliverable: it carries the campaign's brand tokens, the rate card, the single
+// ask, and the signature, and a typed-out text file carries none of them. So install
+// once, retry, and if that fails say plainly that hand-writing is not the fallback.
+async function loadRenderer() {
+  const render = (await import("@react-email/render")).render;
+  const SponsorPitch = (await import(new URL("../templates/sponsor-pitch.mjs", import.meta.url))).default;
+  return { render, SponsorPitch };
+}
+
 let render, SponsorPitch;
 try {
-  ({ render } = await import("@react-email/render"));
-  ({ default: SponsorPitch } = await import(new URL("../templates/sponsor-pitch.mjs", import.meta.url)));
-} catch (err) {
-  console.error(`Render dependencies missing (${err.message}). Run: npm install`);
-  process.exit(3);
+  ({ render, SponsorPitch } = await loadRenderer());
+} catch {
+  console.log("render dependencies absent, installing once…");
+  try {
+    execFileSync("npm", ["install", "--no-audit", "--no-fund", "--silent"], {
+      cwd: resolve(import.meta.dirname, ".."), stdio: "pipe",
+    });
+    ({ render, SponsorPitch } = await loadRenderer());
+    console.log("render dependencies installed");
+  } catch (err) {
+    console.error(`Cannot render: ${err.message}`);
+    console.error("  Run `npm install` in the repo root, then re-run.");
+    console.error("  Do not hand-write the email. The template carries the campaign's");
+    console.error("  brand, the rate card, the single ask, and the signature; a typed");
+    console.error("  text file carries none of them and is not this workflow's output.");
+    process.exit(3);
+  }
 }
 
 await mkdir(resolve("artifacts"), { recursive: true });
