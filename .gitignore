@@ -16,3 +16,8 @@ campaigns/*/*-private.csv
 
 # Local preview config
 .claude/
+
+# Secrets never enter git. This repository is public.
+.env
+.env.*
+!.env.example

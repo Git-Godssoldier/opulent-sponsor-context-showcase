@@ -12,6 +12,22 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
+/**
+ * Load .env once, without a dependency and without overriding a real environment.
+ * The file is gitignored and 0600; this repository is public, so a key reaches disk
+ * here and nowhere else.
+ */
+(function loadEnv() {
+  const file = resolve(ROOT, ".env");
+  if (!existsSync(file)) return;
+  for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const value = m[2].replace(/^["']|["']$/g, "");
+    if (!process.env[m[1]]) process.env[m[1]] = value;
+  }
+})();
+
 export function campaignDir(argv = process.argv) {
   const i = argv.indexOf("--campaign");
   const asked = i !== -1 ? argv[i + 1] : process.env.CAMPAIGN;

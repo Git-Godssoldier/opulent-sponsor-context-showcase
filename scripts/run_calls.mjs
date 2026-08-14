@@ -20,6 +20,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+await import("./lib/campaign.mjs"); // loads .env
 
 const BASE = "https://api.context.dev/v1";
 const OUT = "artifacts";
@@ -43,8 +44,10 @@ function args(argv) {
 /** The plan. Bare domain everywhere — no scheme, no www. */
 function plan({ domain, company, linkedinUrl }) {
   const calls = [
+    // The discriminant is "by_domain", not "domain". A live 400 in August 2026 named the
+    // whole union: by_domain | by_name | by_email | by_ticker | by_direct_url | by_transaction.
     { id: "01-brand", capability: "sponsor resolve", method: "POST", path: "/brand/retrieve",
-      body: { type: "domain", domain }, credits: 10 },
+      body: { type: "by_domain", domain }, credits: 10 },
 
     // input, NOT domain. This is the single most common 400 in this plan.
     { id: "02-naics", capability: "NAICS codes", method: "GET", path: "/web/naics",
@@ -70,14 +73,15 @@ function plan({ domain, company, linkedinUrl }) {
     { id: "09-fonts", capability: "fonts", method: "GET", path: "/web/fonts",
       query: { domain }, credits: 5 },
 
-    // The three signals sponsor fit actually turns on. Each is dated by `freshness`,
-    // because a sponsorship two years stale is not evidence of a sponsorship budget now.
+    // The three signals sponsor fit actually turns on. Each is dated by `freshness`, which
+    // is an enum — last_24_hours | last_week | last_month | last_year — and rejects a bare
+    // "year" with a 400. A sponsorship two years stale is not evidence of a budget now.
     { id: "10-activation", capability: "activation history", method: "POST", path: "/web/search",
-      body: { query: `"${company}" sponsor OR sponsorship music festival 2026`, freshness: "year" }, credits: 10 },
+      body: { query: `"${company}" sponsor OR sponsorship music festival 2026`, freshness: "last_year" }, credits: 10 },
     { id: "11-experiential", capability: "experiential spend", method: "POST", path: "/web/search",
-      body: { query: `"${company}" brand activation experiential marketing event`, freshness: "year" }, credits: 10 },
+      body: { query: `"${company}" brand activation experiential marketing event`, freshness: "last_year" }, credits: 10 },
     { id: "12-market", capability: "regional presence", method: "POST", path: "/web/search",
-      body: { query: `"${company}" St. Louis OR Missouri OR Midwest 2026`, freshness: "year" }, credits: 10 },
+      body: { query: `"${company}" St. Louis OR Missouri OR Midwest 2026`, freshness: "last_year" }, credits: 10 },
   ];
 
   // Only when the client supplied an exact profile URL. Never resolved by search.
