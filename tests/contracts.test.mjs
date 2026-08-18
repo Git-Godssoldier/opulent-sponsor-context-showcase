@@ -1,15 +1,21 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import {
+  destinationInstitutionFromProfile, rankPersonCandidates, routeDiscovery,
+  selectComparableEvents, sponsorshipRecency, verifyResolvedProfile,
+} from "../scripts/lib/discovery-routing.mjs";
 
 const dossierTemplate = JSON.parse(await readFile(resolve("templates/sponsor-dossier.template.json"), "utf8"));
 const packetTemplate = JSON.parse(await readFile(resolve("templates/packet.template.json"), "utf8"));
 const festival = JSON.parse(await readFile(resolve("campaigns/nocturnal-valley/festival-packet.json"), "utf8"));
 const agencySender = JSON.parse(await readFile(resolve("knowledge/agency/sender.json"), "utf8"));
+const nestedSkillPath = resolve("skills/sales/opulent-sponsor-context-showcase/SKILL.md");
+const nestedSkill = await readFile(nestedSkillPath, "utf8");
 
 const REQUIRED_FIELDS = [
   "category_fit", "activation_history", "audience_overlap", "regional_presence",
@@ -21,6 +27,14 @@ const run = (script, args, opts = {}) =>
   execFileSync("node", [script, ...args], { encoding: "utf8", ...opts });
 
 /* ---------------- templates ---------------- */
+
+test("the skill is nested under a discoverable category with model-invoked frontmatter", () => {
+  assert.equal(existsSync(resolve("SKILL.md")), false);
+  assert.match(nestedSkill, /^---\nname: opulent-sponsor-context-showcase\n/);
+  assert.match(nestedSkill, /\ndescription: Sponsor discovery and outreach for festival campaigns\./);
+  assert.match(nestedSkill, /\nlicense: MIT\n---\n/);
+  assert.doesNotMatch(nestedSkill, /disable-model-invocation:/);
+});
 
 test("the dossier template declares all ten required fields", () => {
   for (const name of REQUIRED_FIELDS) {
@@ -256,6 +270,17 @@ test("the plan includes the decision-maker call when one is supplied", () => {
   assert.match(out, /\/people\/retrieve/);
 });
 
+test("country LinkedIn profile URLs are accepted and carried into the call summary", () => {
+  const dir = mkdtempSync(join(tmpdir(), "calls-"));
+  run(resolve("scripts/run_calls.mjs"),
+    ["--domain", "acme.com", "--company", "Acme",
+     "--linkedin-url", "https://uk.linkedin.com/in/example-person", "--dry-run"],
+    { cwd: dir });
+  const summary = JSON.parse(readFileSync(join(dir, "artifacts/calls-summary.json"), "utf8"));
+  assert.equal(summary.subject.linkedin_url, "https://uk.linkedin.com/in/example-person");
+  assert.ok(summary.calls.some((call) => call.path === "/people/retrieve"));
+});
+
 test("naics and sic take input, while styleguide takes domain", async () => {
   const src = await readFile(resolve("scripts/run_calls.mjs"), "utf8");
   assert.match(src, /path: "\/web\/naics",\s*\n\s*query: \{ input:/);
@@ -342,6 +367,7 @@ function harvest(dir, fill) {
 
 const GOOD_SPONSOR = {
   company: "World Wide Technology", category_guess: "technology",
+  sponsorship_title: "Official Technology Partner", sponsorship_date: "2025-09",
   evidence_quote: "fixture quote", evidence_date: "2025-09",
   source_url: "https://evolutionfestival.com",
   domain: "wwt.com", domain_confirmed: true, confirmation_url: "https://www.wwt.com",
@@ -382,7 +408,7 @@ test("a clean harvest emits rows the loader accepts, with origin and lead attach
   assert.equal(cohort.discovered, 1);
   const wwt = cohort.targets.find((t) => t.id === "world-wide-technology");
   assert.equal(wwt.origin, "discovered");
-  assert.match(wwt.activation_lead, /Evolution Festival 2025-09/);
+  assert.match(wwt.activation_lead, /Evolution Festival, 2025-09/);
 });
 
 test("emit skips a company already on the client list", () => {
@@ -393,6 +419,202 @@ test("emit skips a company already on the client list", () => {
   });
   const out = run(DISCOVER, ["--emit", "evolution-stl"], { cwd: dir });
   assert.match(out, /\+0 row\(s\), 1 skipped/);
+});
+
+test("mass discovery selects every high-similarity event and leaves national comps opt-in", () => {
+  const selected = selectComparableEvents(JSON.parse(readFileSync(
+    resolve("campaigns/nocturnal-valley/comparable-events.json"), "utf8")));
+  assert.equal(selected.length, 7);
+  assert.ok(selected.some((event) => event.tier === "4_same_venue"));
+  assert.ok(selected.some((event) => event.tier === "1_same_format_and_region"));
+  assert.ok(selected.some((event) => event.tier === "2_same_market"));
+  assert.ok(!selected.some((event) => event.tier === "3_national_edm"));
+});
+
+test("the rolling year requires a month or date instead of accepting an ambiguous year", () => {
+  assert.equal(sponsorshipRecency("2025-09", "2026-08-18").state, "within_past_year");
+  assert.equal(sponsorshipRecency("2025", "2026-08-18").state, "ambiguous_year_only");
+  assert.equal(sponsorshipRecency("2024-06", "2026-08-18").state, "outside_past_year");
+});
+
+test("title comparison prefers the same sponsorship function over seniority alone", () => {
+  const ranked = rankPersonCandidates("SVP, Brand Partnerships", [
+    { name: "A", title: "Chief Financial Officer", source_url: "https://example.com/a" },
+    { name: "B", title: "Director, Brand Partnerships", linkedin_url: "https://www.linkedin.com/in/b-person", source_url: "https://www.linkedin.com/in/b-person" },
+  ]);
+  assert.equal(ranked[0].name, "B");
+  assert.ok(ranked[0].title_match_score >= 0.5);
+});
+
+test("profile verification refuses a title match when the person has left the sponsor", () => {
+  const checked = verifyResolvedProfile({
+    institution_company: "Patrón Tequila",
+    exemplar_title: "Vice President of USA, Patrón Tequila",
+    full_name: "D-J Hageman",
+    current_title: "Global VP Beauty",
+    current_company: "SharkNinja",
+    linkedin_url: "https://www.linkedin.com/in/d-j-hageman-11093824",
+  });
+  assert.equal(checked.company_match, false);
+  assert.equal(checked.state, "retrieved_match_unconfirmed");
+});
+
+test("a departed sponsor person becomes a one-hop current-employer institution", () => {
+  const profileCheck = verifyResolvedProfile({
+    institution_company: "Patrón Tequila",
+    exemplar_title: "Vice President of USA, Patrón Tequila",
+    expected_name: "D-J Hageman",
+    full_name: "D-J Hageman",
+    current_title: "Global VP Beauty",
+    current_company: "SharkNinja",
+    linkedin_url: "https://www.linkedin.com/in/d-j-hageman-11093824",
+  });
+  const destination = destinationInstitutionFromProfile({
+    source_institution: {
+      company: "Patrón Tequila", domain: "patrontequila.com", category: "tequila",
+      activations: [{
+        sponsorship_title: "Official Tequila Partner",
+        sponsorship_date: "2026-01-15",
+        source_url: "https://example.com/patron-activation",
+      }],
+    },
+    profile_check: profileCheck,
+    resolved_brand: {
+      title: "SharkNinja", domain: "sharkninja.com",
+      industries: { eic: [{ industry: "Consumer Products", subindustry: "Home Appliances" }] },
+    },
+  });
+  assert.equal(destination.company, "SharkNinja");
+  assert.equal(destination.domain, "sharkninja.com");
+  assert.equal(destination.origin, "person_destination");
+  assert.equal(destination.hop_count, 1);
+  assert.deepEqual(destination.activations, [], "the old sponsor activation must not become destination activation evidence");
+  assert.equal(destination.source_sponsor.company, "Patrón Tequila");
+  assert.equal(destination.source_activation.sponsorship_title, "Official Tequila Partner");
+});
+
+test("a departed person is not added without a confirmed current-employer domain", () => {
+  const profileCheck = verifyResolvedProfile({
+    institution_company: "Patrón Tequila",
+    exemplar_title: "Vice President of USA, Patrón Tequila",
+    full_name: "D-J Hageman",
+    current_title: "Global VP Beauty",
+    current_company: "SharkNinja",
+    linkedin_url: "https://www.linkedin.com/in/d-j-hageman-11093824",
+  });
+  assert.equal(destinationInstitutionFromProfile({
+    source_institution: { company: "Patrón Tequila", activations: [] },
+    profile_check: profileCheck,
+    resolved_brand: { title: "SharkNinja", domain: null },
+  }), null);
+});
+
+test("profile verification accepts a cited parent company employer", () => {
+  const checked = verifyResolvedProfile({
+    institution_company: "C4 Energy",
+    organization_aliases: ["Nutrabolt"],
+    exemplar_title: "SVP of Marketing",
+    full_name: "Example Person",
+    current_title: "SVP of Marketing",
+    current_company: "Nutrabolt",
+    linkedin_url: "https://www.linkedin.com/in/example-person",
+  });
+  assert.equal(checked.company_match_basis, "current_employer");
+  assert.equal(checked.state, "verified_match");
+});
+
+test("mass routing filters by the client profile and recency, then lands on the nearest exact profile", () => {
+  const profile = JSON.parse(readFileSync(
+    resolve("campaigns/nocturnal-valley/sponsor-competitor-profile.json"), "utf8"));
+  const routed = routeDiscovery([{
+    event: { key: "real-comp", name: "Comparable Festival", tier: "1_same_format_and_region", edition: "2026", location: "Midwest" },
+    sponsors: [
+      {
+        company: "Example Energy", category: "energy drink", domain: "example.com",
+        sponsorship_title: "Official Energy Partner", sponsorship_date: "2026-06",
+        spokesperson_name: "Owner Example", spokesperson_title: "SVP, Brand Partnerships",
+        quote: "Example Energy is the official energy partner.", source_url: "https://example.com/activation",
+        person_candidates: [
+          { name: "Finance Person", title: "Chief Financial Officer", linkedin_url: "https://www.linkedin.com/in/finance-person", source_url: "https://www.linkedin.com/in/finance-person" },
+          { name: "Partner Person", title: "VP, Brand Partnerships", linkedin_url: "https://www.linkedin.com/in/partner-person", source_url: "https://www.linkedin.com/in/partner-person" },
+        ],
+      },
+      {
+        company: "Old Water", category: "water", domain: "old.example",
+        sponsorship_title: "Water Partner", sponsorship_date: "2024-06",
+        quote: "Old Water sponsored the event.", source_url: "https://old.example/activation",
+      },
+    ],
+  }], profile, { asOf: "2026-08-18" });
+  assert.equal(routed.counts.qualifying_institutions, 1);
+  assert.equal(routed.qualifying[0].company, "Example Energy");
+  assert.equal(routed.qualifying[0].person_identification.state, "profile_url_ready");
+  assert.equal(routed.qualifying[0].person_identification.nearest_title_comparator.name, "Partner Person");
+  assert.equal(routed.review[0].reason, "outside_past_year");
+});
+
+test("replay routing replaces the stale sponsor row with the person's current employer", () => {
+  const dir = mkdtempSync(join(tmpdir(), "destination-route-"));
+  const rawPath = join(dir, "raw.json");
+  const profileCheck = verifyResolvedProfile({
+    institution_company: "Patrón Tequila",
+    exemplar_title: "Vice President of USA, Patrón Tequila",
+    expected_name: "D-J Hageman",
+    full_name: "D-J Hageman",
+    current_title: "Global VP Beauty",
+    current_company: "SharkNinja",
+    linkedin_url: "https://www.linkedin.com/in/d-j-hageman-11093824",
+  });
+  writeFileSync(rawPath, JSON.stringify({
+    event_results: [{
+      event: { key: "grammys", name: "Grammy Awards", tier: "3_national_edm", location: "Los Angeles, CA" },
+      sponsors: [{
+        company: "Patrón Tequila", category: "tequila", domain: "patrontequila.com",
+        sponsorship_title: "Official Tequila Partner", sponsorship_date: "2026-01-15",
+        spokesperson_name: "D-J Hageman", spokesperson_title: "Vice President of USA, Patrón Tequila",
+        quote: "Official Tequila Partner", source_url: "https://example.com/patron-activation",
+        person_candidates: [{
+          name: "D-J Hageman", title: "Vice President of USA, Patrón Tequila",
+          linkedin_url: "https://www.linkedin.com/in/d-j-hageman-11093824",
+          source_url: "https://www.linkedin.com/in/d-j-hageman-11093824",
+        }],
+      }],
+    }],
+    profile_checks: [{ sponsor_key: "patrontequila.com", profile_check: profileCheck }],
+    destination_brand_calls: [{
+      sponsor_key: "patrontequila.com", status: "executed",
+      response: { brand: {
+        title: "SharkNinja", domain: "sharkninja.com",
+        industries: { eic: [{ industry: "Consumer Products", subindustry: "Home Appliances" }] },
+      } },
+    }],
+  }));
+
+  run(DISCOVER, ["--route", rawPath, "--as-of", "2026-08-18", "--replace"], { cwd: dir });
+  const routed = JSON.parse(readFileSync(join(dir, "artifacts/discovery/mass-results.json"), "utf8"));
+  assert.equal(routed.qualifying[0].emission_state, "replaced_by_person_destination");
+  assert.equal(routed.person_destinations[0].company, "SharkNinja");
+  assert.equal(routed.person_destinations[0].activations.length, 0);
+
+  const csvLines = readFileSync(join(dir, "artifacts/discovered.csv"), "utf8").trim().split(/\r?\n/);
+  assert.equal(csvLines.length, 2);
+  assert.match(csvLines[1], /^SharkNinja,/);
+  assert.match(csvLines[1], /person_destination/);
+  assert.doesNotMatch(csvLines[1], /^Patrón Tequila,/);
+});
+
+test("the mass dry run writes event extraction plus general-search and profile-routing stages", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mass-"));
+  const out = run(DISCOVER, ["--mass", "--dry-run", "--as-of", "2026-08-18"], { cwd: dir });
+  assert.match(out, /planned 7 high-similarity event extracts/);
+  const plan = JSON.parse(readFileSync(join(dir, "artifacts/discovery/mass-plan.json"), "utf8"));
+  assert.equal(plan.window_start, "2025-08-18");
+  assert.equal(plan.event_operations.length, 7);
+  assert.equal(plan.event_operations[0].path, "/web/extract");
+  assert.equal(plan.event_operations[0].body.factCheck, true);
+  assert.ok(plan.dynamic_route.some((step) => step.includes("general web search")));
+  assert.ok(plan.dynamic_route.some((step) => step.includes("exact profile URL")));
+  assert.ok(plan.dynamic_route.some((step) => step.includes("current employer")));
 });
 
 /* ---------------- consolidation and concurrency ---------------- */
@@ -406,7 +628,7 @@ test("the call plan runs concurrently, not one at a time", async () => {
   assert.match(src, /wall_ms/, "the summary records wall clock against serial");
 });
 
-test("the critical path is two commands", async () => {
+test("the single target path remains two commands after mass discovery", async () => {
   const pkg = JSON.parse(await readFile(resolve("package.json"), "utf8"));
   assert.equal(pkg.scripts.research, "node scripts/research.mjs");
   assert.equal(pkg.scripts.deliver, "node scripts/deliver.mjs");

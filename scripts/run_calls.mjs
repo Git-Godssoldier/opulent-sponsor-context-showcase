@@ -11,8 +11,8 @@
  *
  * The order is deliberate. A sponsor target is a company first: the brand resolves, the
  * industry codes place it, the site says what it sells and to whom. The decision maker is
- * a later and narrower question, and it only runs when the client supplied an exact
- * profile URL — the same rule the target loader applies to domains.
+ * a later and narrower question. It only runs with an exact profile URL supplied by
+ * the client or by the cited title-search route.
  *
  * Writes one receipt per call to artifacts/receipts/, plus artifacts/calls-summary.json —
  * a compact index of status, credits, and receipt path. Read the summary, not the receipts.
@@ -84,7 +84,8 @@ function plan({ domain, company, linkedinUrl }) {
       body: { query: `"${company}" St. Louis OR Missouri OR Midwest 2026`, freshness: "last_year" }, credits: 10 },
   ];
 
-  // Only when the client supplied an exact profile URL. Never resolved by search.
+  // Only with an exact profile URL. General search can discover the candidate URL,
+  // but this call is the step that resolves the person.
   if (linkedinUrl) {
     calls.push({ id: "13-decision-maker", capability: "decision maker profile", method: "POST",
       path: "/people/retrieve", body: { identifiers: { linkedinUrl } }, credits: null });
@@ -101,7 +102,7 @@ if (/^https?:|^www\./.test(a.domain)) {
   console.error(`--domain must be bare, e.g. example.com — got ${a.domain}`);
   process.exit(2);
 }
-if (a.linkedinUrl && !/^https:\/\/(www\.)?linkedin\.com\/in\//i.test(a.linkedinUrl)) {
+if (a.linkedinUrl && !/^https:\/\/(?:(?:www|[a-z]{2,3})\.)?linkedin\.com\/in\//i.test(a.linkedinUrl)) {
   console.error(`--linkedin-url must be an exact profile URL — got ${a.linkedinUrl}`);
   process.exit(2);
 }
@@ -115,7 +116,7 @@ if (a.dryRun || !key) {
   const reason = a.dryRun ? "dry_run" : "blocked_missing_credentials";
   const summary = calls.map((c) => ({ ...c, status: reason, http_status: null, receipt: null }));
   await writeFile(resolve(OUT, "calls-summary.json"),
-    JSON.stringify({ status: reason, subject: { domain: a.domain, company: a.company }, planned_credits: plannedCredits, calls: summary }, null, 2) + "\n");
+    JSON.stringify({ status: reason, subject: { domain: a.domain, company: a.company, linkedin_url: a.linkedinUrl ?? null }, planned_credits: plannedCredits, calls: summary }, null, 2) + "\n");
   console.log(`${reason}: ${calls.length} calls planned, ${plannedCredits} credits budgeted, none executed`);
   for (const c of calls) console.log(`  ${c.id.padEnd(20)} ${c.method.padEnd(5)} ${c.path}`);
   if (!a.linkedinUrl) console.log("\nno --linkedin-url: decision maker call omitted, not guessed");
@@ -205,7 +206,7 @@ const spent = summary.reduce((n, s) => n + (Number(s.credits) || 0), 0);
 const wallMs = Date.now() - wallStart;
 const serialMs = summary.reduce((n, s) => n + (s.latency_ms || 0), 0);
 await writeFile(resolve(OUT, "calls-summary.json"),
-  JSON.stringify({ status: "complete", subject: { domain: a.domain, company: a.company },
+  JSON.stringify({ status: "complete", subject: { domain: a.domain, company: a.company, linkedin_url: a.linkedinUrl ?? null },
                    executed: summary.filter((s) => s.status === "executed").length,
                    failed: summary.filter((s) => s.status !== "executed").length,
                    planned_credits: plannedCredits, credits_spent: spent,

@@ -1,30 +1,42 @@
 # opulent-sponsor-context-showcase
 
-A skill for Opulent, built for **Trifecta Marketing** — Bob Dittrich's sponsorship sales agency, which sells packages for ten to fifteen independent festivals. It takes one sponsor target from a campaign's list, takes it as far as public evidence allows, and produces a sourced fit dossier, a drafted pitch, and a dashboard showing the whole chain — including what the run could not answer. **Nocturnal Valley is the sample campaign, not the identity**: everything property-specific lives under `campaigns/nocturnal-valley/` and swaps out per engagement.
+A skill for Opulent, built for Trifecta Marketing, Bob Dittrich's sponsorship sales agency. It searches every event that closely matches the campaign, maps the sponsors that fit Bob's category profile, and keeps only sponsorship evidence from the past year. It uses the quoted sponsorship owner's title to find comparable people at each sponsor. It resolves a person only after it retrieves an exact LinkedIn profile. Nocturnal Valley is the sample campaign. Everything about that property lives under `campaigns/nocturnal-valley/` and can be replaced for another engagement.
 
 This repository holds the instructions, the output contract, and the client's own materials: `knowledge/agency/` carries Trifecta's identity and register, and `campaigns/nocturnal-valley/` carries that property's decks bit-for-bit with their claims extracted and cited, because outreach authors from them. It gathers no third-party data at rest — run artifacts stay out of git, and the templates are empty on purpose.
 
 ## What it does
 
-Depth over breadth is the point. A stack of shallow rows proves nothing a language model cannot produce in a minute — which is exactly where the client's list came from. One target taken to the limit of the evidence proves a method.
+The discovery run starts with the campaign's event profile. It covers prior events at the same venue, events with the same format and region, and events in the same market. National events are optional.
 
-A company name and a bare domain go in. The run validates the entity before spending anything on it, exhausts the provider surface on the company — brand resolution, industry codes, sitemap, bounded crawl, screenshot, styleguide, dated public signals — reads one dated activation page, and drafts one pitch whose every sentence traces back to a field the run produced. The dashboard shows the identity fixed before retrieval, the page each field came from, what the run cost, and the inputs still missing that block a step.
+For each event, the run extracts sponsor name, sponsor category, sponsorship property title, sponsorship date, source, quote, and the named sponsor employee and title when the page supplies them. The run then checks the category against Bob's approved profile and checks the date against a rolling 365 day window.
+
+For each match, the run searches the public web for LinkedIn profiles at the same company. The query uses the cited employee title and the sponsor company. Search results are candidates. The run ranks the listed titles and checks up to three exact profiles. It selects the closest profile that still works at the sponsor and still has a matching role. If that person left, the run resolves the current employer and adds that institution instead. It follows one employer hop only. The source sponsor and event activation remain provenance for the move. They are not treated as sponsorship evidence for the new employer.
 
 ## Run it
 
 ```bash
+npm run discover -- --mass           # all high similarity events, then title and person routing
+# add --include-national to include national electronic music events
 npm run research -- --target <id>    # gate + 12 concurrent calls + deck read + assemble
 #   fill artifacts/signal.json, write judgement into artifacts/dossier.json
 npm run deliver                      # assemble + draft + lint + attach + validate
-npm run discover -- --list           # net-new sponsors, before you have a target
 npm test                             # contract tests
 ```
 
 Retrieval needs `CONTEXT_DEV_API_KEY` server-side. Without it the run still validates, plans, and prices — and reports the retrieval stage as `blocked_missing_credentials` rather than substituting for it.
 
-## Net-new discovery
+## Mass discovery
 
-The client's own process was a ChatGPT brainstorm followed by manual research — names with no evidence. Discovery inverts it: the campaign's `comparable-events.json` holds a tiered universe of comparable 2026 events, and harvesting their sponsor pages yields companies that already bought what this festival sells, each with a dated, quotable activation. Same format and region outrank national properties; Evolution Festival's 2026 pause makes its 2025 St. Louis sponsors the warmest cold list in the market; and any sponsor of a prior event at Astral Valley Art Park itself is the strongest comp that can exist. Discovered rows are emitted in the client list's own column shape and ride the same gates.
+`npm run discover -- --mass` runs four passes.
+
+1. It extracts every supported sponsor from all high similarity events. Each result must include a cited sponsorship title and a month or date inside the past year.
+2. It keeps sponsors whose category matches `sponsor-competitor-profile.json`. That file reflects Bob's August 11 list and his request to include vodka and tequila.
+3. It uses the cited sponsorship owner's title in a general web search. It ranks exact LinkedIn profile results by title similarity. It checks up to three ranked profiles and selects the best current match.
+4. If the retrieved person left the sponsor, it resolves the person's current employer by name with `/brand/retrieve`. The old sponsor row is withheld. The current employer enters `artifacts/discovered.csv` after its canonical domain resolves. The route stops after this one move.
+
+The command writes the full result to `artifacts/discovery/mass-results.json`. It writes accepted sponsor rows and person destination rows to `artifacts/discovered.csv`. The ordinary domain, compliance, and client exclusion gates still apply. A person destination keeps the prior sponsorship in named source fields. Its activation fields stay empty until separate evidence shows that the new employer sponsored an event.
+
+Without `CONTEXT_DEV_API_KEY`, the command writes `artifacts/discovery/mass-plan.json` and records `blocked_missing_credentials`. It does not claim that any search or profile call ran.
 
 ## Two gates, and why they are gates
 
@@ -49,7 +61,9 @@ Every sponsor carries all ten, whatever the outcome: category fit, activation hi
 ## Layout
 
 ```
-SKILL.md                          the eight-command procedure the agent follows
+skills/sales/
+  opulent-sponsor-context-showcase/
+    SKILL.md                      discoverable agent entrypoint and completion gates
 knowledge/agency/                 Trifecta Marketing: profile, register, sender.json, house bans
 campaigns/nocturnal-valley/       the sample campaign, swappable per engagement
   sources/                        the property's decks, bit-for-bit, checksummed
@@ -58,6 +72,7 @@ campaigns/nocturnal-valley/       the sample campaign, swappable per engagement
   festival-packet.json            the property being sold; client-supplied, not verified
   targets.csv + exclusions.csv    the campaign's list and rule gates
   comparable-events.json          the discovery universe, tiered by the deck's own ICP
+  sponsor-competitor-profile.json Bob's approved sponsor categories and person rule
   banned-phrases.json             this deck's register words, banned in email prose
 templates/
   sponsor-dossier.template.json   one target: ten required fields + six extension blocks
@@ -73,11 +88,12 @@ references/
   evidence-policy.md              what may be claimed, from what, and where a claim stops
 scripts/
   lib/campaign.mjs                 resolves the active campaign and the agency identity
+  lib/discovery-routing.mjs        rolling date, category, and title comparison rules
   load_targets.mjs                both gates; rejects anything without an exact domain
   run_calls.mjs                   the fixed provider plan, one receipt per call
   scrape_signal.mjs               the activation brief, and its check
   assemble.mjs                    receipts + signal + packet -> dossier and packet
-  discover_sponsors.mjs           net-new harvest from comparable events' sponsor pages
+  discover_sponsors.mjs           mass event, sponsor, title search, and profile route
   research.mjs                    one command: gate, calls, brand, first assemble
   deliver.mjs                     one command: assemble, draft, lint, attach, validate
   render_email.mjs                the pitch, behind two refusing gates
@@ -89,7 +105,10 @@ dashboard/                        Next.js app; reads the packet, renders its emp
 
 ## What it will not do
 
-- Resolve a company name to a domain, or a person's name to a profile.
+- Guess a company domain or turn a name search into an identity.
+- Treat a LinkedIn search result as a resolved person before profile retrieval.
+- Copy an old employer's sponsorship onto the person's current employer.
+- Follow a person through more than one employer move.
 - Put a disputed number, an unsupplied package, or an undated claim in a message.
 - Mark a target clear of a rule whose contents nobody has.
 - Send anything.

@@ -22,6 +22,7 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { companyNameMatch, verifyResolvedProfile } from "./lib/discovery-routing.mjs";
 
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i === -1 ? d : process.argv[i + 1]; };
 const read = async (p) => JSON.parse(await readFile(resolve(p), "utf8"));
@@ -46,7 +47,7 @@ if (existsSync(resolve("artifacts/receipts"))) {
 const ok = (id) => (receipts[id]?.http_status === 200 ? receipts[id].response : null);
 
 const brand = ok("01-brand")?.brand ?? null;
-const person = ok("13-decision-maker")?.person ?? null;
+const rawPerson = ok("13-decision-maker")?.person ?? null;
 
 const field = (value, source, url) =>
   value === null || value === undefined || (Array.isArray(value) && !value.length)
@@ -57,6 +58,28 @@ const field = (value, source, url) =>
 const targetId = arg("target", null);
 const targets = cohort.targets ?? [];
 const subject = (targetId ? targets.find((t) => t.id === targetId) : targets.find((t) => t.domain === summary.subject?.domain)) ?? targets[0] ?? {};
+const profileUrl = subject.decision_maker_url ?? summary.subject?.linkedin_url ?? null;
+const personProfile = rawPerson?.profile ?? rawPerson ?? null;
+const currentExperience = rawPerson?.experience?.[0] ?? personProfile?.experience?.[0] ?? {};
+const currentPersonName = personProfile?.fullName ?? rawPerson?.fullName ?? rawPerson?.name ?? null;
+const currentPersonTitle = currentExperience.title ?? personProfile?.headline ?? rawPerson?.headline ?? null;
+const currentPersonCompany = currentExperience.companyName ?? currentExperience.company?.name
+  ?? currentExperience.company?.title ?? currentExperience.company ?? null;
+const profileCheck = rawPerson ? verifyResolvedProfile({
+  institution_company: subject.company ?? summary.subject?.company,
+  exemplar_title: subject.role_exemplar_title ?? currentPersonTitle,
+  full_name: currentPersonName,
+  current_title: currentPersonTitle,
+  current_company: currentPersonCompany,
+  linkedin_url: profileUrl,
+  organization_aliases: subject.parent_company ? [subject.parent_company] : [],
+}) : null;
+const companyNames = [subject.company ?? summary.subject?.company, subject.parent_company].filter(Boolean);
+const person = rawPerson && (companyNames.some((name) => companyNameMatch(name, currentPersonCompany))
+    || companyNames.some((name) => companyNameMatch(name, currentPersonTitle)))
+  && (!subject.role_exemplar_title || profileCheck?.state === "verified_match")
+  ? rawPerson
+  : null;
 
 const dossier = await read("templates/sponsor-dossier.template.json");
 
@@ -78,6 +101,32 @@ dossier.client_list = {
   note: subject.note ?? null,
   activation_lead: subject.activation_lead ?? null,
   activation_lead_source: subject.activation_lead_source ?? null,
+};
+dossier.discovery_route = {
+  origin: subject.origin ?? null,
+  parent_company: subject.parent_company ?? null,
+  source_sponsor: subject.source_sponsor ?? null,
+  source_sponsor_domain: subject.source_sponsor_domain ?? null,
+  source_sponsorship_title: subject.source_sponsorship_title ?? null,
+  source_sponsorship_date: subject.source_sponsorship_date ?? null,
+  source_sponsorship_url: subject.source_sponsorship_url ?? null,
+  sponsorship_title: subject.sponsorship_title ?? null,
+  sponsorship_date: subject.sponsorship_date ?? null,
+  activation_source_url: subject.activation_lead_source ?? null,
+  role_exemplar: {
+    name: subject.role_exemplar_name ?? null,
+    title: subject.role_exemplar_title ?? null,
+    source_url: subject.role_exemplar_source ?? null,
+  },
+  nearest_title_comparator: {
+    name: subject.person_candidate_name ?? null,
+    title: subject.person_candidate_title ?? null,
+    linkedin_url: profileUrl,
+    source_url: subject.person_candidate_source ?? null,
+    match_score: subject.person_match_score ?? null,
+    state: subject.person_identification_state ?? null,
+  },
+  retrieved_profile_check: profileCheck,
 };
 dossier.gates = {
   draft_gate: subject.draft_gate ?? null,
@@ -112,11 +161,13 @@ R.activation_history = signal.reason_eligible === true
           : "No activation page has been read yet." };
 
 R.decision_maker = person
-  ? field(person?.profile?.fullName, "people_retrieve", subject.decision_maker_url ?? null)
+  ? field(currentPersonName, "people_retrieve", profileUrl)
   : { value: null, state: "unknown", confidence: "Unknown", source: null, source_url: null, observed_at: null,
-      reason: "No exact LinkedIn profile URL was supplied. A name and a company is not an identity, and the wrong match here sends a real pitch to the wrong desk." };
+      reason: profileUrl
+        ? "An exact profile URL was discovered, but people retrieval did not resolve it in this run. The search result remains a candidate, not an identity."
+        : "No exact LinkedIn profile URL was supplied or found. A name and a company is not an identity, and the wrong match here sends a real pitch to the wrong desk." };
 R.decision_maker_title = person
-  ? field(person?.experience?.[0]?.title, "people_retrieve", subject.decision_maker_url ?? null)
+  ? field(currentPersonTitle, "people_retrieve", profileUrl)
   : { value: null, state: "unknown", confidence: "Unknown", source: null, source_url: null, observed_at: null,
       reason: "Depends on decision_maker." };
 
@@ -275,8 +326,12 @@ Object.assign(packet, {
       note: festival.attendance.reason },
     { gate: "sender_account", state: "unresolved", blocks: "sending",
       note: agencySender.authority_reason },
-    { gate: "decision_maker_urls", state: "unresolved", blocks: "a named greeting",
-      note: "No exact LinkedIn profile URLs supplied, so drafts open to the company's sponsorship team. The skill never resolves a name by search." },
+    { gate: "decision_maker_urls", state: person ? "resolved" : "unresolved", blocks: "a named greeting",
+      note: person
+        ? "General search produced an exact profile candidate and people retrieval verified the company and current title."
+        : rawPerson
+          ? "People retrieval returned a profile, but its current company or title did not verify the candidate."
+          : "General search may discover exact LinkedIn profile candidates, but a named greeting remains blocked until people retrieval verifies the nearest title comparator." },
     { gate: "data_access", state: "unresolved", blocks: "warm-path mapping",
       note: "No inbox or network access is configured, so relationship paths stay out of scope. Public evidence only until it is." },
   ],

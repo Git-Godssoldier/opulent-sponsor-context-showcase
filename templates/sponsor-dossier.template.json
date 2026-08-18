@@ -13,6 +13,32 @@
     "list_variance": null,
     "alternates_considered": []
   },
+  "discovery_route": {
+    "origin": null,
+    "parent_company": null,
+    "source_sponsor": null,
+    "source_sponsor_domain": null,
+    "source_sponsorship_title": null,
+    "source_sponsorship_date": null,
+    "source_sponsorship_url": null,
+    "sponsorship_title": null,
+    "sponsorship_date": null,
+    "activation_source_url": null,
+    "role_exemplar": {
+      "name": null,
+      "title": null,
+      "source_url": null
+    },
+    "nearest_title_comparator": {
+      "name": null,
+      "title": null,
+      "linkedin_url": null,
+      "source_url": null,
+      "match_score": null,
+      "state": null
+    },
+    "retrieved_profile_check": null
+  },
   "gates": {
     "draft_gate": null,
     "draft_gate_reason": null,

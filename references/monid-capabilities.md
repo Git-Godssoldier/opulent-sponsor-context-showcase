@@ -46,6 +46,6 @@ These are queries to run, not endpoints that exist — the catalog grows weekly 
 ## Rules that do not bend here
 
 - **Inspect before run.** Parameter guessing is the Monid equivalent of hand-building a Context.dev request.
-- **The identity gate holds.** A Monid person or company result never overrides the exact-domain and exact-profile-URL rules; it feeds the same fields under the same evidence envelope, `Verified` only with a source URL and a receipt.
+- **The identity gate holds.** A Monid result never overrides the exact domain and exact profile URL rules. A cited search result may supply an exact profile candidate. The person remains unresolved until the selected profile is retrieved and checked.
 - **Costs are stated.** `monid balance` before and after a session, conservative limits on first runs, and every `BLOCKED` run surfaced to the operator verbatim.
 - **Monid supplements, never replaces.** Where Context.dev already answers (brand, codes, styleguide), the fixed plan stands — one provider per fact, the cheaper-and-already-planned one first.

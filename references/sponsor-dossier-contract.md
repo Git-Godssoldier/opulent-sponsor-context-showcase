@@ -30,13 +30,17 @@ Every field in `required_fields` carries the same six keys:
 | `audience_overlap` | The company's own stated audience | Their site or media kit names an audience |
 | `regional_presence` | `/brand/retrieve` address, `/web/search` | An address or named market is retrieved |
 | `budget_signal` | Dated activation at a known scale | A page states or implies a spend band |
-| `decision_maker` | `/people/retrieve` | The client supplies an exact profile URL |
+| `decision_maker` | `/people/retrieve` | An exact profile URL is supplied by the client or found in a cited public search result, and profile retrieval verifies it |
 | `decision_maker_title` | `/people/retrieve` | Depends on `decision_maker` |
 | `contact_route` | A verification provider | Never, in showcase mode. Stays `null` |
 | `compliance_flags` | the campaign's `exclusions.csv` | Always; empty is a real answer |
 | `changes_since_last` | A prior accepted run | Second run onward |
 
 All ten appear whatever the outcome. A field missing from the packet is worse than one present and `unknown`: the reader cannot tell "we looked and found nothing" from "we never looked."
+
+`discovery_route` records the sponsorship title and date, the cited role exemplar, the nearest title comparator from general search, and the profile resolution state. A search result can fill this extension as a candidate. It cannot fill `decision_maker` until `/people/retrieve` succeeds.
+
+When a retrieved person now works elsewhere, `discovery_route.origin` is `person_destination`. The source sponsor, source sponsorship title, date, and URL stay in the `source_*` fields. They explain why the person was followed. They do not fill `activation_history` for the current employer. That field still needs separate dated and quoted evidence about the current employer.
 
 ## Gates
 

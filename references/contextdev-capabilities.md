@@ -9,15 +9,17 @@ Base `https://api.context.dev/v1` · `Authorization: Bearer $CONTEXT_DEV_API_KEY
 | Call | Method | Credits | Use for |
 | --- | --- | --- | --- |
 | `/brand/retrieve` | POST | 10 | The core of this run. Resolves a **known** bare domain into a structured company: title, description, industries, address, socials, logos, colours. Everything downstream keys off it. |
-| `/people/retrieve` | POST | 20 (paid plans) | The decision maker, and only when the client supplied an exact LinkedIn URL. Returns full name, headline, location, summary, experience, education, skills. Price and access are provider-controlled facts — re-check <https://docs.context.dev/skill.md> before planning around them. Omitted rather than guessed. |
+| `/people/retrieve` | POST | 20 (paid plans) | Resolve one exact LinkedIn profile URL. The URL may come from the client or from a cited general web search result. This call does not search by name, company, or title. |
 
 `identifiers.linkedinUrl` is the only input. It resolves an identity you already have; it does not search for one.
+
+For a current employer found on a retrieved profile, use `{ "type": "by_name", "name": "Company", "country_gl": "us" }`. The name must be 3 to 30 characters. The response must supply `brand.title` and a canonical `brand.domain`, and the title must match the employer named on the profile before the institution enters the target list.
 
 ## Company and brand
 
 | Call | Method | Credits | Use for |
 | --- | --- | --- | --- |
-| `/brand/retrieve` | POST | 10 | Resolve the firm by domain, name, email, ticker, or ISIN. Returns domain, title, description, colors, logos, socials, address, industries (EIC), links, phone, language. One call per canonical domain, reused across everyone at that firm. |
+| `/brand/retrieve` | POST | 10 | Resolve the firm by domain, name, email, ticker, or transaction data. Returns domain, title, description, colors, logos, socials, address, industries (EIC), links, phone, language. One call per canonical domain, reused across everyone at that firm. |
 | `/brand/retrieve-simplified` | GET | 10 | Logos and colors only, when the dossier needs a mark and nothing else. |
 | `/utility/prefetch` | POST | **0** | Warm the cache the moment a domain is known. Free, fire-and-forget, never blocked on. Paid plans only. |
 | `/web/naics`, `/web/sic` | GET | 10 | Normalized industry codes from a name or description. This is what turns a firm into a segment. |
@@ -26,7 +28,7 @@ Base `https://api.context.dev/v1` · `Authorization: Bearer $CONTEXT_DEV_API_KEY
 
 | Call | Method | Credits | Use for |
 | --- | --- | --- | --- |
-| `/web/search` | POST | 1/result | Dated public signals — a new fund, a financing, a hire, a talk. `freshness` narrows to the recency window; `includeDomains` keeps it to sources worth trusting. Results are leads until extraction verifies them. |
+| `/web/search` | POST | 1 per 10 results | Find public signals and exact LinkedIn profile candidates. `freshness` can limit dated signals. `includeDomains` can limit source sites. Search results remain leads until extraction or profile retrieval verifies them. |
 | `/web/extract` | POST | 10 | The evidence workhorse. A caller-supplied JSON Schema across up to 50 pages, with `factCheck: true` returning **null for anything it cannot support**. This is the only call that yields a `Verified` field with a citable source. |
 | `/web/scrape/markdown` | GET | 1 | Read one known page cleanly. `maxAgeMs: 0` forces a fresh read. |
 | `/web/scrape/html` | GET | 1–2 | When the markup itself matters. |
@@ -69,3 +71,11 @@ Brand data is cached provider-side for about 90 days. A cached hit returns in un
 On 408, 429, or a 5xx, `run_calls.mjs` retries once, honouring `Retry-After` when sent and waiting a bounded backoff otherwise. A second failure is recorded as `failed` and the plan moves on — the failure is a finding, and every other status (401, 403, 404, 422) is terminal on first sight.
 
 Tag every call so the provider ledger and ours reconcile: `client:trifecta`, `app:sponsor-context-showcase`, `run:{date}`.
+
+## Mass sponsor and person route
+
+1. Run one `/web/extract` call for each high similarity event. Request sponsor category, sponsorship title, sponsorship month or date, quote, source URL, and sponsor employee title.
+2. Keep only records that match the campaign category profile and fall inside the rolling past year.
+3. Run `/web/search` with the sponsor company and cited employee title. Scope the query to LinkedIn profile pages. Rank the titles shown in the results.
+4. Send up to three ranked exact `/in/` URLs to `/people/retrieve`. Select the best profile that still matches the sponsor and the role. Keep every checked profile and receipt in the result.
+5. When the retrieved name matches but the employer changed, send one `by_name` `/brand/retrieve` call for the current employer. Replace the stale sponsor row with the resolved current employer. Keep the old activation only as route provenance. Stop after one hop.

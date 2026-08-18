@@ -6,7 +6,10 @@
  *     [--exclusions targets/exclusions.csv] [--out artifacts/cohort.json]
  *
  * Accepts the column shape a client list actually arrives in:
- *   company, category, domain, region_fit, activation_lead, activation_lead_source, note
+ *   company, category, domain, region_fit, activation_lead, activation_lead_source,
+ *   sponsorship_title, sponsorship_date, role_exemplar_name, role_exemplar_title,
+ *   parent_company, person_candidate_name, person_candidate_title,
+ *   person_candidate_linkedin_url, source_sponsor, source_sponsorship_title, note
  *
  * `activation_lead` is a research lead, not evidence. It records that someone saw this
  * company sponsoring a named event, so step 3 knows where to look. It never satisfies
@@ -50,6 +53,7 @@ const exclPath = flag("exclusions", `${campaign.dir}/exclusions.csv`);
 
 /** Bare domain: no scheme, no www, no path. One dot minimum. */
 const BARE_DOMAIN = /^(?!www\.)(?!https?:)[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+const LINKEDIN_PROFILE = /^https:\/\/(?:(?:www|[a-z]{2,3})\.)?linkedin\.com\/in\/[a-z0-9_%.-]+\/?([?#].*)?$/i;
 
 /**
  * A character scanner, not a regex.
@@ -107,7 +111,7 @@ const unsuppliedRules = rules.filter((r) => !r.pattern && r.supplied_by === "uns
 const files = [[file, "client_list"]];
 if (existsSync("artifacts/discovered.csv")) files.push(["artifacts/discovered.csv", "discovered"]);
 const rows = files.flatMap(([f, origin]) =>
-  parseCsv(readFileSync(f, "utf8")).map((r) => ({ ...r, origin })));
+  parseCsv(readFileSync(f, "utf8")).map((r) => ({ ...r, origin: r.origin || origin })));
 const accepted = [];
 const rejected = [];
 
@@ -127,6 +131,9 @@ for (const [i, row] of rows.entries()) {
     if (!domain) problems.push("no domain — supply the exact bare domain of the entity you mean");
     else if (!BARE_DOMAIN.test(domain)) problems.push(`domain is not bare, e.g. example.com — got ${domain}`);
   }
+  if (row.person_candidate_linkedin_url && !LINKEDIN_PROFILE.test(row.person_candidate_linkedin_url)) {
+    problems.push(`person candidate is not an exact LinkedIn profile URL — got ${row.person_candidate_linkedin_url}`);
+  }
 
   if (problems.length) {
     rejected.push({ row: i + 2, company: company || "(unnamed)", category: row.category || null, problems });
@@ -141,6 +148,23 @@ for (const [i, row] of rows.entries()) {
     region_fit: row.region_fit || null,
     activation_lead: row.activation_lead || null,
     activation_lead_source: row.activation_lead_source || null,
+    sponsorship_title: row.sponsorship_title || null,
+    sponsorship_date: row.sponsorship_date || null,
+    parent_company: row.parent_company || null,
+    source_sponsor: row.source_sponsor || null,
+    source_sponsor_domain: row.source_sponsor_domain || null,
+    source_sponsorship_title: row.source_sponsorship_title || null,
+    source_sponsorship_date: row.source_sponsorship_date || null,
+    source_sponsorship_url: row.source_sponsorship_url || null,
+    role_exemplar_name: row.role_exemplar_name || null,
+    role_exemplar_title: row.role_exemplar_title || null,
+    role_exemplar_source: row.role_exemplar_source || null,
+    person_candidate_name: row.person_candidate_name || null,
+    person_candidate_title: row.person_candidate_title || null,
+    decision_maker_url: row.person_candidate_linkedin_url || null,
+    person_candidate_source: row.person_candidate_source || null,
+    person_match_score: row.person_match_score ? Number(row.person_match_score) : null,
+    person_identification_state: row.person_identification_state || null,
     note: row.note || null,
     origin: row.origin || "client_list",
     draft_gate: ban ? "blocked_compliance" : hold ? "blocked_client_decision" : "open",
@@ -166,7 +190,8 @@ const summary = {
   rejected: rejected.length,
   draftable: deduped.filter((t) => t.draft_gate === "open").length,
   with_activation_lead: deduped.filter((t) => t.activation_lead).length,
-  discovered: deduped.filter((t) => t.origin === "discovered").length,
+  discovered: deduped.filter((t) => t.origin !== "client_list").length,
+  person_destinations: deduped.filter((t) => t.origin === "person_destination").length,
   blocked_compliance: deduped.filter((t) => t.draft_gate === "blocked_compliance").length,
   blocked_client_decision: deduped.filter((t) => t.draft_gate === "blocked_client_decision").length,
   unverified_against_rule: deduped.filter((t) => t.exclusion_check === "unverified_against_rule").length,

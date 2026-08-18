@@ -85,7 +85,10 @@ console.log(`\nsubject: ${target.company} · ${target.domain} · ${target.origin
 console.log(`cohort:  ${cohort.accepted} accepted, ${cohort.draftable} draftable, ${cohort.rejected} rejected, ${cohort.discovered ?? 0} discovered\n`);
 
 // ---- 2 · the network plan and the deck read, together -----------------------
-const linkedinUrl = arg("linkedin-url", null);
+// A caller override wins. Otherwise mass discovery may supply an exact profile URL that
+// was found by the title-scoped general-search route. /people/retrieve still resolves
+// only that exact URL; it never receives a title or a name search.
+const linkedinUrl = arg("linkedin-url", target.decision_maker_url ?? null);
 const tPar = Date.now();
 const [callsOut, brandOut] = await Promise.all([
   (async () => {
