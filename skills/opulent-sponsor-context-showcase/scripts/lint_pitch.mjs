@@ -39,7 +39,7 @@ const preview = props.props?.previewText ?? "";
 const prose = [text, subject, preview].join("\n").toLowerCase();
 
 // ---- banned phrases ---------------------------------------------------------
-const { campaignDir, agencyDir } = await import("./lib/campaign.mjs");
+const { campaignDir, agencyDir } = await import("./campaign.mjs");
 const house = JSON.parse(readFileSync(resolve(agencyDir(), "banned-phrases.json"), "utf8"));
 const deck = JSON.parse(readFileSync(resolve(campaignDir().dir, "banned-phrases.json"), "utf8"));
 for (const phrase of [...house.house, ...(deck.deck_register ?? [])]) {

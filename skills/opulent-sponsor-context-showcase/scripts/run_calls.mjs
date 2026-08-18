@@ -20,7 +20,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-await import("./lib/campaign.mjs"); // loads .env
+await import("./campaign.mjs"); // loads .env
 
 const BASE = "https://api.context.dev/v1";
 const OUT = "artifacts";

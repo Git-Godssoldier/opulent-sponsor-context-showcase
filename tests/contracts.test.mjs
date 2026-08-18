@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -8,13 +8,15 @@ import test from "node:test";
 import {
   destinationInstitutionFromProfile, rankPersonCandidates, routeDiscovery,
   selectComparableEvents, sponsorshipRecency, verifyResolvedProfile,
-} from "../scripts/lib/discovery-routing.mjs";
+} from "../skills/opulent-sponsor-context-showcase/scripts/discovery-routing.mjs";
 
 const dossierTemplate = JSON.parse(await readFile(resolve("templates/sponsor-dossier.template.json"), "utf8"));
 const packetTemplate = JSON.parse(await readFile(resolve("templates/packet.template.json"), "utf8"));
 const festival = JSON.parse(await readFile(resolve("campaigns/nocturnal-valley/festival-packet.json"), "utf8"));
 const agencySender = JSON.parse(await readFile(resolve("knowledge/agency/sender.json"), "utf8"));
-const nestedSkillPath = resolve("skills/sales/opulent-sponsor-context-showcase/SKILL.md");
+const skillDir = resolve("skills/opulent-sponsor-context-showcase");
+const scriptDir = resolve(skillDir, "scripts");
+const nestedSkillPath = resolve(skillDir, "SKILL.md");
 const nestedSkill = await readFile(nestedSkillPath, "utf8");
 
 const REQUIRED_FIELDS = [
@@ -28,12 +30,25 @@ const run = (script, args, opts = {}) =>
 
 /* ---------------- templates ---------------- */
 
-test("the skill is nested under a discoverable category with model-invoked frontmatter", () => {
+test("the skill has one discoverable root and only references and scripts beneath it", () => {
   assert.equal(existsSync(resolve("SKILL.md")), false);
-  assert.match(nestedSkill, /^---\nname: opulent-sponsor-context-showcase\n/);
-  assert.match(nestedSkill, /\ndescription: Sponsor discovery and outreach for festival campaigns\./);
-  assert.match(nestedSkill, /\nlicense: MIT\n---\n/);
+  assert.equal(existsSync(resolve("references")), false);
+  assert.equal(existsSync(resolve("scripts")), false);
+  const children = readdirSync(skillDir, { withFileTypes: true });
+  assert.deepEqual(children.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort(), ["references", "scripts"]);
+  assert.ok(children.some((entry) => entry.isFile() && entry.name === "SKILL.md"));
+  assert.ok(readdirSync(resolve(skillDir, "references"), { withFileTypes: true }).every((entry) => entry.isFile()));
+  assert.ok(readdirSync(resolve(skillDir, "scripts"), { withFileTypes: true }).every((entry) => entry.isFile()));
+  assert.match(nestedSkill, /^---\nname: opulent-sponsor-context-showcase\ndescription: \|\n/);
+  assert.match(nestedSkill, /Sponsor discovery and outreach for festival campaigns\./);
+  assert.match(nestedSkill, /\nlicense: MIT\ncompatibility:/);
+  assert.match(nestedSkill, /\nmetadata:\n  author: opulent\n  version: "0\.2\.1"\n---\n/);
   assert.doesNotMatch(nestedSkill, /disable-model-invocation:/);
+  for (const file of [
+    "contextdev-capabilities.md", "dashboard-brief.md", "evidence-policy.md",
+    "monid-capabilities.md", "scenarios.jsonl", "sponsor-dossier-contract.md",
+    "sponsor-fit-and-outreach.md", "writing-quality.md",
+  ]) assert.equal(existsSync(resolve(skillDir, "references", file)), true, `${file} is missing`);
 });
 
 test("the dossier template declares all ten required fields", () => {
@@ -88,7 +103,7 @@ test("the rate card is supplied with slide citations; availability is not", () =
 
 test("brand tokens come from the deck's own slide evidence", () => {
   const dir = mkdtempSync(join(tmpdir(), "brand-"));
-  run(resolve("scripts/extract_brand.mjs"),
+  run(resolve(scriptDir, "extract_brand.mjs"),
     ["--deck", resolve("campaigns/nocturnal-valley/sources/nocturnal-valley-deck-draft-2.pptx")], { cwd: dir });
   const tokens = JSON.parse(readFileSync(join(dir, "artifacts/brand-tokens.json"), "utf8"));
   assert.equal(tokens.palette.accent, "#5B2D8E");   // the deck's dominant saturated color
@@ -102,7 +117,7 @@ test("brand tokens come from the deck's own slide evidence", () => {
 
 test("npm strips quotes; a multi-word company survives anyway", () => {
   const dir = mkdtempSync(join(tmpdir(), "calls-"));
-  run(resolve("scripts/run_calls.mjs"),
+  run(resolve(scriptDir, "run_calls.mjs"),
     ["--domain", "acme.com", "--company", "Sun", "Cruiser", "--dry-run"], { cwd: dir });
   const summary = JSON.parse(readFileSync(join(dir, "artifacts/calls-summary.json"), "utf8"));
   assert.equal(summary.subject.company, "Sun Cruiser");
@@ -110,7 +125,7 @@ test("npm strips quotes; a multi-word company survives anyway", () => {
 
 test("a missing key records blocked and exits 0, so the run continues", () => {
   const dir = mkdtempSync(join(tmpdir(), "calls-"));
-  run(resolve("scripts/run_calls.mjs"),
+  run(resolve(scriptDir, "run_calls.mjs"),
     ["--domain", "acme.com", "--company", "Acme"],
     { cwd: dir, env: { ...process.env, CONTEXT_DEV_API_KEY: "" } });
   const summary = JSON.parse(readFileSync(join(dir, "artifacts/calls-summary.json"), "utf8"));
@@ -126,7 +141,7 @@ function lintPitch(text, subject, preview) {
   writeFileSync(join(dir, "pitch.props.json"),
     JSON.stringify({ subject, props: { previewText: preview } }));
   try {
-    run(resolve("scripts/lint_pitch.mjs"), [dir], { stdio: "pipe" });
+    run(resolve(scriptDir, "lint_pitch.mjs"), [dir], { stdio: "pipe" });
     return { code: 0, out: "" };
   } catch (err) {
     return { code: err.status, out: String(err.stderr) };
@@ -184,7 +199,7 @@ function cohortFrom(targetsCsv, exclusionsCsv, discoveredCsv = null) {
     mkdirSync(join(dir, "artifacts"), { recursive: true });
     writeFileSync(join(dir, "artifacts/discovered.csv"), discoveredCsv);
   }
-  run(resolve("scripts/load_targets.mjs"), [t, "--exclusions", x, "--out", out], { cwd: dir });
+  run(resolve(scriptDir, "load_targets.mjs"), [t, "--exclusions", x, "--out", out], { cwd: dir });
   return JSON.parse(readFileSync(out, "utf8"));
 }
 
@@ -255,7 +270,7 @@ test("an activation lead is carried as a lead, never as evidence", () => {
 
 test("the plan omits the decision-maker call when no profile URL is supplied", () => {
   // Run from a scratch cwd: the script writes its dry-run summary beside itself.
-  const out = run(resolve("scripts/run_calls.mjs"),
+  const out = run(resolve(scriptDir, "run_calls.mjs"),
     ["--domain", "acme.com", "--company", "Acme", "--dry-run"],
     { cwd: mkdtempSync(join(tmpdir(), "calls-")) });
   assert.ok(!out.includes("/people/retrieve"));
@@ -263,7 +278,7 @@ test("the plan omits the decision-maker call when no profile URL is supplied", (
 });
 
 test("the plan includes the decision-maker call when one is supplied", () => {
-  const out = run(resolve("scripts/run_calls.mjs"),
+  const out = run(resolve(scriptDir, "run_calls.mjs"),
     ["--domain", "acme.com", "--company", "Acme",
      "--linkedin-url", "https://www.linkedin.com/in/example-person", "--dry-run"],
     { cwd: mkdtempSync(join(tmpdir(), "calls-")) });
@@ -272,7 +287,7 @@ test("the plan includes the decision-maker call when one is supplied", () => {
 
 test("country LinkedIn profile URLs are accepted and carried into the call summary", () => {
   const dir = mkdtempSync(join(tmpdir(), "calls-"));
-  run(resolve("scripts/run_calls.mjs"),
+  run(resolve(scriptDir, "run_calls.mjs"),
     ["--domain", "acme.com", "--company", "Acme",
      "--linkedin-url", "https://uk.linkedin.com/in/example-person", "--dry-run"],
     { cwd: dir });
@@ -282,20 +297,20 @@ test("country LinkedIn profile URLs are accepted and carried into the call summa
 });
 
 test("naics and sic take input, while styleguide takes domain", async () => {
-  const src = await readFile(resolve("scripts/run_calls.mjs"), "utf8");
+  const src = await readFile(resolve(scriptDir, "run_calls.mjs"), "utf8");
   assert.match(src, /path: "\/web\/naics",\s*\n\s*query: \{ input:/);
   assert.match(src, /path: "\/web\/sic",\s*\n\s*query: \{ input:/);
   assert.match(src, /path: "\/web\/styleguide",\s*\n\s*query: \{ domain \}/);
 });
 
 test("a non-bare domain is refused before any call is planned", () => {
-  assert.throws(() => run(resolve("scripts/run_calls.mjs"),
+  assert.throws(() => run(resolve(scriptDir, "run_calls.mjs"),
     ["--domain", "https://acme.com", "--company", "Acme", "--dry-run"],
     { cwd: mkdtempSync(join(tmpdir(), "calls-")), stdio: "pipe" }));
 });
 
 test("a decision-maker URL that is not an exact profile is refused", () => {
-  assert.throws(() => run(resolve("scripts/run_calls.mjs"),
+  assert.throws(() => run(resolve(scriptDir, "run_calls.mjs"),
     ["--domain", "acme.com", "--company", "Acme",
      "--linkedin-url", "https://linkedin.com/company/acme", "--dry-run"],
     { cwd: mkdtempSync(join(tmpdir(), "calls-")), stdio: "pipe" }));
@@ -327,7 +342,7 @@ function packetWith(mutate) {
 
 function validateRun(file, dir, flags = []) {
   try {
-    run(resolve("scripts/validate_packet.mjs"), [file, ...flags], { cwd: dir, stdio: "pipe" });
+    run(resolve(scriptDir, "validate_packet.mjs"), [file, ...flags], { cwd: dir, stdio: "pipe" });
     return { code: 0, out: "" };
   } catch (err) {
     return { code: err.status, out: String(err.stderr) };
@@ -354,7 +369,7 @@ test("a strong band without its evidence is refused by name", () => {
 
 /* ---------------- discovery ---------------- */
 
-const DISCOVER = resolve("scripts/discover_sponsors.mjs");
+const DISCOVER = resolve(scriptDir, "discover_sponsors.mjs");
 
 function harvest(dir, fill) {
   run(DISCOVER, ["--event", "evolution-stl"], { cwd: dir });
@@ -620,7 +635,7 @@ test("the mass dry run writes event extraction plus general-search and profile-r
 /* ---------------- consolidation and concurrency ---------------- */
 
 test("the call plan runs concurrently, not one at a time", async () => {
-  const src = await readFile(resolve("scripts/run_calls.mjs"), "utf8");
+  const src = await readFile(resolve(scriptDir, "run_calls.mjs"), "utf8");
   // A fixed worker pool, not a for-await over the plan: twelve cold round-trips in
   // series was the largest block of wall clock in the workflow.
   assert.match(src, /Promise\.all\(Array\.from\(\{ length: Math\.min\(CONCURRENCY/);
@@ -630,15 +645,16 @@ test("the call plan runs concurrently, not one at a time", async () => {
 
 test("the single target path remains two commands after mass discovery", async () => {
   const pkg = JSON.parse(await readFile(resolve("package.json"), "utf8"));
-  assert.equal(pkg.scripts.research, "node scripts/research.mjs");
-  assert.equal(pkg.scripts.deliver, "node scripts/deliver.mjs");
+  assert.equal(pkg.scripts.research, "node skills/opulent-sponsor-context-showcase/scripts/research.mjs");
+  assert.equal(pkg.scripts.deliver, "node skills/opulent-sponsor-context-showcase/scripts/deliver.mjs");
+  assert.ok(Object.values(pkg.scripts).every((command) => !/\bnode scripts\//.test(command)));
   // The dashboard build stays off deliver's default path: it is a review surface,
   // and a Next build costs more wall clock than every other stage combined.
   assert.ok(!pkg.scripts.deliver.includes("dashboard"));
 });
 
 test("render_email does not re-assemble when an orchestrator is driving", async () => {
-  const src = await readFile(resolve("scripts/render_email.mjs"), "utf8");
+  const src = await readFile(resolve(scriptDir, "render_email.mjs"), "utf8");
   assert.match(src, /process\.env\.ORCHESTRATED === "1"/);
 });
 
@@ -653,8 +669,8 @@ test("the render packages are runtime dependencies, not dev tooling", async () =
 });
 
 test("research installs the render packages, and the draft step retries", async () => {
-  const research = await readFile(resolve("scripts/research.mjs"), "utf8");
-  const email = await readFile(resolve("scripts/render_email.mjs"), "utf8");
+  const research = await readFile(resolve(scriptDir, "research.mjs"), "utf8");
+  const email = await readFile(resolve(scriptDir, "render_email.mjs"), "utf8");
   assert.match(research, /node_modules\/@react-email\/render/);
   assert.match(research, /npm", \["install"/);
   assert.match(email, /render dependencies absent, installing once/);

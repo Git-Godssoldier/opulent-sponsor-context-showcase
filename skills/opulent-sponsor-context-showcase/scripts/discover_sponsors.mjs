@@ -21,11 +21,11 @@ import {
 } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { campaignDir } from "./lib/campaign.mjs";
+import { campaignDir } from "./campaign.mjs";
 import {
   destinationInstitutionFromProfile, exactLinkedinProfile, routeDiscovery,
   selectComparableEvents, slug, titleSimilarity, verifyResolvedProfile,
-} from "./lib/discovery-routing.mjs";
+} from "./discovery-routing.mjs";
 
 const campaign = campaignDir();
 const universe = JSON.parse(readFileSync(resolve(campaign.dir, "comparable-events.json"), "utf8"));

@@ -52,18 +52,19 @@ A third rule exists and cannot yet be enforced. Three sponsors were described as
 
 **Package availability.** The decks supply a full rate card — five tiers from Presenting Sponsor at $100K+ down to Sampling Partner at $10K–$25K, extracted with slide citations into the campaign's `deck-facts.md` — so a pitch may name a tier and its published range. What was never supplied is availability: which tiers remain open and what the three in-motion sponsors hold. A pitch therefore never implies a tier is available, and the validator fails any message naming a package that is not a rate-card tier.
 
-**Sending.** `send_state` is `draft_only_not_sent` and `sender_authority` is `unconfirmed`. Every draft goes out under the client's own name to a real decision maker, so the send button belongs to the client — the reasoning is in `references/sponsor-fit-and-outreach.md`.
+**Sending.** `send_state` is `draft_only_not_sent` and `sender_authority` is `unconfirmed`. Every draft goes out under the client's own name to a real decision maker, so the send button belongs to the client — the reasoning is in `skills/opulent-sponsor-context-showcase/references/sponsor-fit-and-outreach.md`.
 
 ## The ten required fields
 
-Every sponsor carries all ten, whatever the outcome: category fit, activation history, audience overlap, regional presence, budget signal, decision maker, decision maker title, contact route, compliance flags, and changes since last. Each ships with its own state, so a gap always says which kind of gap it is — the envelope rules are in `references/sponsor-dossier-contract.md`.
+Every sponsor carries all ten, whatever the outcome: category fit, activation history, audience overlap, regional presence, budget signal, decision maker, decision maker title, contact route, compliance flags, and changes since last. Each ships with its own state, so a gap always says which kind of gap it is — the envelope rules are in `skills/opulent-sponsor-context-showcase/references/sponsor-dossier-contract.md`.
 
 ## Layout
 
 ```
-skills/sales/
-  opulent-sponsor-context-showcase/
-    SKILL.md                      discoverable agent entrypoint and completion gates
+skills/opulent-sponsor-context-showcase/
+  SKILL.md                        discoverable agent entrypoint and completion gates
+  references/                     provider, evidence, writing, dossier, and scenario contracts
+  scripts/                        executable workflow and routing helpers, with no extra nesting
 knowledge/agency/                 Trifecta Marketing: profile, register, sender.json, house bans
 campaigns/nocturnal-valley/       the sample campaign, swappable per engagement
   sources/                        the property's decks, bit-for-bit, checksummed
@@ -78,28 +79,6 @@ templates/
   sponsor-dossier.template.json   one target: ten required fields + six extension blocks
   packet.template.json            the run: scope, festival, ledger, health, open gates
   sponsor-pitch.mjs               React Email, zero-build ESM, brand-token driven
-references/
-  contextdev-capabilities.md      every provider call, its credit cost, when to reach for it
-  monid-capabilities.md           the second provider lane: discover -> inspect -> run, with receipts
-  sponsor-dossier-contract.md     the field envelope and the rules the validator enforces
-  sponsor-fit-and-outreach.md     fit bands, reason ranking, message build, house voice
-  writing-quality.md              word-level rules, with the full swap tables
-  dashboard-brief.md              layers, rules, visual direction, licensing
-  evidence-policy.md              what may be claimed, from what, and where a claim stops
-scripts/
-  lib/campaign.mjs                 resolves the active campaign and the agency identity
-  lib/discovery-routing.mjs        rolling date, category, and title comparison rules
-  load_targets.mjs                both gates; rejects anything without an exact domain
-  run_calls.mjs                   the fixed provider plan, one receipt per call
-  scrape_signal.mjs               the activation brief, and its check
-  assemble.mjs                    receipts + signal + packet -> dossier and packet
-  discover_sponsors.mjs           mass event, sponsor, title search, and profile route
-  research.mjs                    one command: gate, calls, brand, first assemble
-  deliver.mjs                     one command: assemble, draft, lint, attach, validate
-  render_email.mjs                the pitch, behind two refusing gates
-  extract_brand.mjs               deck (+ optional site styleguide) -> brand tokens
-  lint_pitch.mjs                  voice lint; npm run email chains it
-  validate_packet.mjs             enforces the dossier contract
 dashboard/                        Next.js app; reads the packet, renders its empty states
 ```
 

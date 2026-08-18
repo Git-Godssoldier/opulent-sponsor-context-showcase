@@ -31,7 +31,7 @@ const arg = (name, dflt) => {
 const read = async (p) => JSON.parse(await readFile(resolve(p), "utf8"));
 
 const dossier = await read(arg("dossier", "artifacts/dossier.json"));
-const { campaignDir, sender } = await import("./lib/campaign.mjs");
+const { campaignDir, sender } = await import("./campaign.mjs");
 const festival = await read(arg("festival", `${campaignDir().dir}/festival-packet.json`));
 const agencySender = sender();
 

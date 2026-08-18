@@ -33,7 +33,7 @@ function loadPacket() {
  * page renders its own empty states rather than a demonstration built from data nobody
  * gathered. Point it at the filled packet and the same sections populate.
  *
- * Layering follows references/dashboard-brief.md: the decision layer first, the audit
+ * Layering follows skills/opulent-sponsor-context-showcase/references/dashboard-brief.md: the decision layer first, the audit
  * layer collapsed beneath it. Nothing proposed or blocked is ever styled as verified.
  */
 export default function Home() {

@@ -45,7 +45,7 @@ const targetId = arg("target", null);
 // A fresh clone has no node_modules, and the draft step needs the React Email packages.
 // Installing here, at the front of the run, is what stops an operator meeting a missing
 // package at the last step and typing the email out by hand instead.
-const repoRoot = resolve(here, "..");
+const repoRoot = resolve(here, "../../..");
 if (!existsSync(resolve(repoRoot, "node_modules/@react-email/render"))) {
   const tDep = Date.now();
   process.stdout.write("  installing render dependencies (first run only)… ");

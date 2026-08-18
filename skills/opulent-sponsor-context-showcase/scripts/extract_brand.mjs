@@ -23,7 +23,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 
 import { resolve, basename } from "node:path";
 import { inflateRawSync } from "node:zlib";
 
-import { campaignDir } from "./lib/campaign.mjs";
+import { campaignDir } from "./campaign.mjs";
 
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i === -1 ? d : process.argv[i + 1]; };
 

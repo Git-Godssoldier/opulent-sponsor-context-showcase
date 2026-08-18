@@ -38,7 +38,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { existsSync } from "node:fs";
 import { dirname } from "node:path";
 
-import { campaignDir } from "./lib/campaign.mjs";
+import { campaignDir } from "./campaign.mjs";
 
 const campaign = campaignDir();
 const rest = process.argv.slice(2);

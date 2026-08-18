@@ -22,7 +22,7 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { companyNameMatch, verifyResolvedProfile } from "./lib/discovery-routing.mjs";
+import { companyNameMatch, verifyResolvedProfile } from "./discovery-routing.mjs";
 
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i === -1 ? d : process.argv[i + 1]; };
 const read = async (p) => JSON.parse(await readFile(resolve(p), "utf8"));
@@ -33,7 +33,7 @@ const summary = await maybe("artifacts/calls-summary.json");
 if (!summary) { console.error("artifacts/calls-summary.json not found. Run npm run calls first."); process.exit(2); }
 const signal = (await maybe("artifacts/signal.json")) ?? {};
 const cohort = (await maybe("artifacts/cohort.json")) ?? {};
-const { campaignDir, sender } = await import("./lib/campaign.mjs");
+const { campaignDir, sender } = await import("./campaign.mjs");
 const campaign = campaignDir();
 const festival = await read(`${campaign.dir}/festival-packet.json`);
 const agencySender = sender();

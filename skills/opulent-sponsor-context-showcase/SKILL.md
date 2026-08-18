@@ -1,7 +1,16 @@
 ---
 name: opulent-sponsor-context-showcase
-description: Sponsor discovery and outreach for festival campaigns. Use when mapping sponsors across highly similar events, identifying sponsor people from public titles and exact profiles, following departed people to current employers, qualifying target lists, or building a sourced sponsor dossier and draft.
+description: |
+  Sponsor discovery and outreach for festival campaigns. Maps sponsors across highly
+  similar events, identifies sponsor people from public titles and exact profiles,
+  follows departed people to current employers, qualifies target lists, and builds a
+  sourced sponsor dossier and draft. Use for festival sponsor discovery, sponsor person
+  identification, comparable event research, sponsorship targeting, and sponsor outreach.
 license: MIT
+compatibility: Requires Node.js 20+. Live discovery requires CONTEXT_DEV_API_KEY.
+metadata:
+  author: opulent
+  version: "0.2.1"
 ---
 
 # Opulent sponsor context
@@ -80,11 +89,12 @@ Open only the branch needed for the current step. Paths are relative to this ski
 
 | Trigger | Reference |
 | --- | --- |
-| Write outreach prose | `../../../knowledge/agency/trifecta-profile.md` and `../../../references/writing-quality.md` |
-| Cite a property fact or rate-card tier | `../../../campaigns/<key>/deck-facts.md` |
-| Change a provider call | `../../../references/contextdev-capabilities.md` |
-| Use Monid for discovery or gap filling | `../../../references/monid-capabilities.md` |
-| Change field shape or validation | `../../../references/sponsor-dossier-contract.md` |
-| Judge fit or build the pitch | `../../../references/sponsor-fit-and-outreach.md` |
-| Check a claim boundary | `../../../references/evidence-policy.md` |
-| Change the dashboard | `../../../references/dashboard-brief.md` |
+| Write outreach prose | `../../knowledge/agency/trifecta-profile.md` and `references/writing-quality.md` |
+| Cite a property fact or rate-card tier | `../../campaigns/<key>/deck-facts.md` |
+| Change a provider call | `references/contextdev-capabilities.md` |
+| Use Monid for discovery or gap filling | `references/monid-capabilities.md` |
+| Change field shape or validation | `references/sponsor-dossier-contract.md` |
+| Judge fit or build the pitch | `references/sponsor-fit-and-outreach.md` |
+| Check a claim boundary | `references/evidence-policy.md` |
+| Change the dashboard | `references/dashboard-brief.md` |
+| Change discovery routing or tests | `references/scenarios.jsonl` |
